@@ -1,0 +1,16 @@
+name: calendart
+description: Flutter calendar widget with customizable items and selection methods.
+version: 0.0.1
+homepage: https://github.com/creomobile/calendar
+
+environment:
+  sdk: ">=2.6.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  pedantic: ^1.8.0
+
+flutter:

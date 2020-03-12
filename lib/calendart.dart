@@ -188,7 +188,6 @@ class CalendarState extends State<Calendar> {
         oldWidget.scrollDirection != widget.scrollDirection ||
         oldWidget.columns != widget.columns ||
         oldWidget.rows != widget.rows) {
-      _listKey = null;
       _reset(displayDate);
     }
   }
@@ -196,6 +195,7 @@ class CalendarState extends State<Calendar> {
   void _reset(DateTime date) => setState(() {
         _controller.dispose();
         _controller = null;
+        _listKey = null;
         _displayDate = date;
       });
 
@@ -206,15 +206,15 @@ class CalendarState extends State<Calendar> {
   void inc() => _move(_lenght);
   void dec() => _move(-_lenght);
 
-  DateTime _indexToDate(int index, [int cross = 0]) {
+  DateTime _getDate(int row, [int column = 0]) {
     final crossFactor =
         widget.scrollDirection == Axis.horizontal ? 1 : widget.columns;
     final monthCount = _displayDate.year * DateTime.monthsPerYear +
         _displayDate.month -
         _itemsBefore * crossFactor -
         1 +
-        index * crossFactor +
-        cross;
+        row * crossFactor +
+        column;
     final month = (monthCount + 1) % DateTime.monthsPerYear;
     return DateTime(
         monthCount ~/ DateTime.monthsPerYear, month == 0 ? 12 : month);
@@ -230,7 +230,7 @@ class CalendarState extends State<Calendar> {
 
         return NotificationListener<ScrollEndNotification>(
           onNotification: (_) {
-            final date = _indexToDate(_controller.position.pixels ~/ _lenght);
+            final date = _getDate(_controller.position.pixels ~/ _lenght);
             if (date != _displayDate) {
               _reset(date);
               if (widget.onDisplayDateChanged != null) {
@@ -246,8 +246,8 @@ class CalendarState extends State<Calendar> {
             physics: _SnapScrollPhysics(itemSize: _lenght),
             scrollDirection: scrollDirection,
             itemBuilder: (context, index) {
-              Widget build(int index, [int cross = 0]) {
-                final date = _indexToDate(index, cross);
+              Widget build(int row, [int column = 0]) {
+                final date = _getDate(row, column);
                 final calendar = _Calendar(
                   displayDate: date,
                   firstDayOfWeekIndex: widget.firstDayOfWeekIndex,
@@ -263,9 +263,6 @@ class CalendarState extends State<Calendar> {
                       : widget.buildCalendarDecorator(date, calendar),
                 );
               }
-
-              print(widget.displayDate);
-              print(index);
 
               final calendars =
                   Iterable.generate(horizontal ? widget.rows : widget.columns)

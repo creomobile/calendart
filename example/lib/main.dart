@@ -17,9 +17,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   static const _demos = <String, Widget>{
     'Simple Calendar with Single Selection':
-        const SimpleCalendarWithSingleSelection(),
-    'Simple Calendar with Multi Selection':
-        const SimpleCalendarWithSingleSelection(),
+        SimpleCalendarWithSingleSelection(),
+    'Simple Calendar with Multi Selection': SimpleCalendarWithSingleSelection(),
   };
 
   @override
@@ -50,6 +49,11 @@ class _SimpleCalendarWithSingleSelectionState
   final _calendarHeightController = TextEditingController(text: '300');
   final _columnsController = TextEditingController(text: '1');
   final _rowsController = TextEditingController(text: '1');
+  final _yearController =
+      TextEditingController(text: DateTime.now().year.toString());
+  final _monthController =
+      TextEditingController(text: DateTime.now().month.toString());
+
   var _calendarWidth = 300;
   var _calendarHeight = 300;
   var _columns = 1;
@@ -57,8 +61,10 @@ class _SimpleCalendarWithSingleSelectionState
   var _rows = 1;
   int get rows => _rows > 0 ? _rows : 1;
   var _scrollDirection = Axis.horizontal;
+  var _year = DateTime.now().year;
+  var _month = DateTime.now().month;
 
-  var _displayed = DateTime.now();
+  //var _displayed = DateTime.now();
   DateTime _selected;
 
   @override
@@ -96,7 +102,7 @@ class _SimpleCalendarWithSingleSelectionState
           ),
         ]);
 
-    return Column(
+    return ListView(
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -117,6 +123,12 @@ class _SimpleCalendarWithSingleSelectionState
             buildEnumSelector<Axis>('Scroll Direction:', Axis.values,
                 _scrollDirection, (_) => _scrollDirection = _),
 
+            // year
+            buildIntSelector(_yearController, 'Year', (_) => _year = _),
+
+            // month
+            buildIntSelector(_monthController, 'Month', (_) => _month = _),
+
             // dec
             IconButton(
                 icon: Icon(Icons.arrow_back),
@@ -128,46 +140,48 @@ class _SimpleCalendarWithSingleSelectionState
                 onPressed: () => _calendarKey.currentState?.inc()),
           ]),
         ),
-        Text(_displayed.toString()),
-        Expanded(
-          child: Center(
-            child: Container(
-              key: ValueKey(_scrollDirection),
-              constraints: BoxConstraints(
-                  maxWidth: _calendarWidth.toDouble() * columns,
-                  maxHeight: _calendarHeight.toDouble() * rows),
-              padding: const EdgeInsets.all(16),
-              child: Calendar(
-                key: _calendarKey,
-                columns: columns,
-                rows: rows,
-                displayDate: _displayed,
-                scrollDirection: _scrollDirection,
-                onDisplayDateChanged: (_) => setState(() => _displayed = _),
-                dayBuilder: (date, type, column, row) {
-                  final day = Calendar.buildDefaultDay(date, type, column, row,
-                      selected: _selected == date);
-                  return type == DayType.today || type == DayType.current
-                      ? InkResponse(
-                          child: day,
-                          onTap: () => setState(() => _selected = date))
-                      : day;
-                },
-                buildCalendarDecorator: (date, calendar) => Row(
-                  children: [
-                    Expanded(
-                      child: Column(children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text('${date.month} ${date.year}',
-                              style: TextStyle(color: Colors.grey)),
-                        ),
-                        Expanded(child: calendar),
-                      ]),
-                    ),
-                    const SizedBox(width: 24),
-                  ],
-                ),
+        const SizedBox(height: 32),
+        Center(
+          child: Container(
+            key: ValueKey(_scrollDirection),
+            constraints: BoxConstraints(
+                maxWidth: _calendarWidth.toDouble() * columns,
+                maxHeight: _calendarHeight.toDouble() * rows),
+            padding: const EdgeInsets.all(16),
+            child: Calendar(
+              key: _calendarKey,
+              columns: columns,
+              rows: rows,
+              displayDate: DateTime(_year, _month == 0 ? 1 : _month),
+              scrollDirection: _scrollDirection,
+              onDisplayDateChanged: (_) => setState(() {
+                _year = _.year;
+                _month = _.month;
+                _yearController.text = _year.toString();
+                _monthController.text = _month.toString();
+              }),
+              dayBuilder: (date, type, column, row) {
+                final day = Calendar.buildDefaultDay(date, type, column, row,
+                    selected: _selected == date);
+                return type == DayType.today || type == DayType.current
+                    ? InkResponse(
+                        child: day, onTap: () => setState(() => _selected = date))
+                    : day;
+              },
+              buildCalendarDecorator: (date, calendar) => Row(
+                children: [
+                  Expanded(
+                    child: Column(children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('${date.month} ${date.year}',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                      Expanded(child: calendar),
+                    ]),
+                  ),
+                  const SizedBox(width: 24),
+                ],
               ),
             ),
           ),

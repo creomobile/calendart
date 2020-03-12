@@ -231,9 +231,10 @@ class _SimpleCalendarWithSingleSelectionState
                 _yearController.text = _year.toString();
                 _monthController.text = _month.toString();
               }),
-              dayBuilder: (date, type, column, row) {
+              dayBuilder: (context, date, type, column, row) {
                 final hoverMode = _hoverMode;
-                var day = Calendar.buildDefaultDay(date, type, column, row);
+                var day =
+                    Calendar.buildDefaultDay(context, date, type, column, row);
                 if (type != DayType.extraLow && type != DayType.extraHigh) {
                   day = Calendar.buildSmoothSelection(date, type, column, row,
                       day: day,
@@ -255,7 +256,7 @@ class _SimpleCalendarWithSingleSelectionState
                       )
                     : day;
               },
-              buildCalendarDecorator: (date, calendar) => Row(
+              buildCalendarDecorator: (context, date, calendar) => Row(
                 children: [
                   Expanded(
                     child: Column(children: [

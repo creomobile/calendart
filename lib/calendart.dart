@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 enum DayType { extraLow, current, today, extraHigh }
 typedef DayBuilder = Widget Function(
-    DateTime date, DayType type, int colunm, int row);
+    BuildContext context, DateTime date, DayType type, int colunm, int row);
 typedef CalendarDecoratorBuilder = Widget Function(
-    DateTime displayDate, Widget calendar);
+    BuildContext context, DateTime displayDate, Widget calendar);
 
 class _Calendar extends StatelessWidget {
   const _Calendar({
@@ -63,7 +63,7 @@ class _Calendar extends StatelessWidget {
               ? date == today ? DayType.today : DayType.current
               : DayType.extraHigh;
 
-      return dayBuilder(date, type, column, row);
+      return dayBuilder(context, date, type, column, row);
     }
 
     return Column(
@@ -130,8 +130,8 @@ class Calendar extends StatefulWidget {
           child: Text(MaterialLocalizations.of(context).narrowWeekdays[index],
               style: TextStyle(color: Colors.blueAccent)));
 
-  static Widget buildDefaultDay(
-          DateTime date, DayType type, int column, int row) =>
+  static Widget buildDefaultDay(BuildContext context, DateTime date,
+          DayType type, int column, int row) =>
       Center(
           child: Text(
         date.day.toString(),
@@ -144,7 +144,7 @@ class Calendar extends StatefulWidget {
       ));
 
   static Widget buildSimpleSelection(
-      DateTime date, DayType type, int column, int row,
+      BuildContext context, DateTime date, DayType type, int column, int row,
       {@required Widget day,
       @required bool selected,
       bool selectExtra = false,
@@ -306,7 +306,7 @@ class CalendarState extends State<Calendar> {
                   height: _calendarHeight,
                   child: widget.buildCalendarDecorator == null
                       ? calendar
-                      : widget.buildCalendarDecorator(date, calendar),
+                      : widget.buildCalendarDecorator(context, date, calendar),
                 );
               }
 

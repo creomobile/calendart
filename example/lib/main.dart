@@ -63,9 +63,73 @@ class _SimpleCalendarWithSingleSelectionState
   var _scrollDirection = Axis.horizontal;
   var _year = DateTime.now().year;
   var _month = DateTime.now().month;
+  var _selectionType = SelectionType.single;
 
-  //var _displayed = DateTime.now();
-  DateTime _selected;
+  DateTime _singleSelected;
+  final _multiSelected = <DateTime>{};
+  DateTime _rangeSelectedFrom;
+  DateTime _rangeSelectedTo;
+  DateTime _hovered;
+
+  bool get _hoverMode =>
+      _selectionType == SelectionType.range &&
+      _rangeSelectedFrom != null &&
+      _rangeSelectedTo == null;
+
+  bool _isSelected(DateTime date) {
+    switch (_selectionType) {
+      case SelectionType.single:
+        return date == _singleSelected;
+      case SelectionType.multi:
+        return _multiSelected.contains(date);
+      case SelectionType.range:
+        if (_rangeSelectedFrom == null) return false;
+        DateTime from;
+        DateTime to;
+        if (_rangeSelectedTo == null) {
+          final hovered = _hovered ?? _rangeSelectedFrom;
+          final isBefore = hovered.isBefore(_rangeSelectedFrom);
+          from = isBefore ? hovered : _rangeSelectedFrom;
+          to = isBefore ? _rangeSelectedFrom : hovered;
+        } else {
+          from = _rangeSelectedFrom;
+          to = _rangeSelectedTo;
+        }
+        return !date.isBefore(from) && !date.isAfter(to);
+      default:
+        return false;
+    }
+  }
+
+  void _setSelected(DateTime date) {
+    switch (_selectionType) {
+      case SelectionType.single:
+        if (_singleSelected != date) setState(() => _singleSelected = date);
+        break;
+      case SelectionType.multi:
+        setState(() => (_multiSelected.contains(date)
+            ? _multiSelected.remove
+            : _multiSelected.add)(date));
+        break;
+      case SelectionType.range:
+        setState(() {
+          if (_rangeSelectedFrom == null || _rangeSelectedTo != null) {
+            _rangeSelectedFrom = date;
+            _rangeSelectedTo = null;
+          } else {
+            if (date.isBefore(_rangeSelectedFrom)) {
+              _rangeSelectedTo = _rangeSelectedFrom;
+              _rangeSelectedFrom = date;
+            } else {
+              _rangeSelectedTo = date;
+            }
+          }
+        });
+        break;
+      default:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +202,13 @@ class _SimpleCalendarWithSingleSelectionState
             IconButton(
                 icon: Icon(Icons.arrow_forward),
                 onPressed: () => _calendarKey.currentState?.inc()),
+
+            // scroll direction
+            buildEnumSelector<SelectionType>(
+                'Selection Type:',
+                SelectionType.values,
+                _selectionType,
+                (_) => _selectionType = _),
           ]),
         ),
         const SizedBox(height: 32),
@@ -161,11 +232,27 @@ class _SimpleCalendarWithSingleSelectionState
                 _monthController.text = _month.toString();
               }),
               dayBuilder: (date, type, column, row) {
-                final day = Calendar.buildDefaultDay(date, type, column, row,
-                    selected: _selected == date);
-                return type == DayType.today || type == DayType.current
+                final hoverMode = _hoverMode;
+                var day = Calendar.buildDefaultDay(date, type, column, row);
+                if (type != DayType.extraLow && type != DayType.extraHigh) {
+                  day = Calendar.buildSmoothSelection(date, type, column, row,
+                      day: day,
+                      isSelected: (_) =>
+                          _.month == date.month && _isSelected(_),
+                      opacity: hoverMode ? 0.3 : 1.0);
+                }
+
+                return _selectionType != SelectionType.none &&
+                        (type == DayType.today || type == DayType.current)
                     ? InkResponse(
-                        child: day, onTap: () => setState(() => _selected = date))
+                        child: day,
+                        onTap: () => _setSelected(date),
+                        onHover: hoverMode
+                            ? (hovered) {
+                                if (hovered) setState(() => _hovered = date);
+                              }
+                            : null,
+                      )
                     : day;
               },
               buildCalendarDecorator: (date, calendar) => Row(
@@ -190,6 +277,8 @@ class _SimpleCalendarWithSingleSelectionState
     );
   }
 }
+
+enum SelectionType { none, single, multi, range }
 
 class IntTextInputFormatter extends TextInputFormatter {
   IntTextInputFormatter({this.minValue, this.maxValue});

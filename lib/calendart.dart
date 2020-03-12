@@ -131,33 +131,79 @@ class Calendar extends StatefulWidget {
               style: TextStyle(color: Colors.blueAccent)));
 
   static Widget buildDefaultDay(
-          DateTime date, DayType type, int column, int row,
-          {bool selected = false}) =>
-      AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        child: Center(
+          DateTime date, DayType type, int column, int row) =>
+      Center(
           child: Text(
-            date.day.toString(),
-            style: type == DayType.current && !selected
-                ? null
-                : TextStyle(
-                    color: selected || type == DayType.today
-                        ? Colors.blueAccent
-                        : Colors.grey,
-                    decoration: type == DayType.today
-                        ? TextDecoration.underline
-                        : null),
-          ),
+        date.day.toString(),
+        style: TextStyle(
+          color: type == DayType.extraLow || type == DayType.extraHigh
+              ? Colors.grey
+              : null,
+          decoration: type == DayType.today ? TextDecoration.underline : null,
         ),
-        decoration: BoxDecoration(
-          color: selected ? Colors.blueAccent.withOpacity(0.1) : null,
-          border: Border.all(
-              color: selected
-                  ? Colors.blueAccent
-                  : Colors.blueAccent.withOpacity(0.0)),
-          borderRadius: BorderRadius.circular(9999),
-        ),
-      );
+      ));
+
+  static Widget buildSimpleSelection(
+      DateTime date, DayType type, int column, int row,
+      {@required Widget day,
+      @required bool selected,
+      bool selectExtra = false,
+      Color color = Colors.blueAccent,
+      double opacity = 1.0,
+      Radius radius = const Radius.circular(9999)}) {
+    final select = selected &&
+        (selectExtra ||
+            (type != DayType.extraLow && type != DayType.extraHigh));
+    return Container(
+      child: select
+          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
+          : day,
+      decoration: select
+          ? BoxDecoration(
+              color: color.withOpacity(0.1 * opacity),
+              border: Border.all(color: color.withOpacity(opacity)),
+              borderRadius: BorderRadius.all(radius),
+            )
+          : null,
+    );
+  }
+
+  static Widget buildSmoothSelection(
+      DateTime date, DayType type, int column, int row,
+      {@required Widget day,
+      bool Function(DateTime date) isSelected,
+      Color color = Colors.blueAccent,
+      double opacity = 1.0,
+      Radius radius = const Radius.circular(9999)}) {
+    final selected = isSelected(date);
+    final leftSelected =
+        column != 0 && isSelected(date.subtract(const Duration(days: 1)));
+    final rightSelected = column != DateTime.daysPerWeek - 1 &&
+        isSelected(date.add(const Duration(days: 1)));
+    final topSelected = row != 0 &&
+        isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
+    final bottomSelected = row != 5 &&
+        isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
+
+    final opacityColor = color.withOpacity(opacity);
+    final borderSide = BorderSide(color: opacityColor);
+    return Container(
+      child: selected
+          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
+          : day,
+      decoration: selected
+          ? BoxDecoration(
+              color: opacityColor.withOpacity(0.1),
+              border: Border(
+                left: leftSelected ? BorderSide.none : borderSide,
+                right: rightSelected ? BorderSide.none : borderSide,
+                top: topSelected ? BorderSide.none : borderSide,
+                bottom: bottomSelected ? BorderSide.none : borderSide,
+              ),
+            )
+          : null,
+    );
+  }
 }
 
 class CalendarState extends State<Calendar> {

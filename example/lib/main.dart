@@ -116,6 +116,7 @@ class _SimpleCalendarWithSingleSelectionState
           if (_rangeSelectedFrom == null || _rangeSelectedTo != null) {
             _rangeSelectedFrom = date;
             _rangeSelectedTo = null;
+            _hovered = null;
           } else {
             if (date.isBefore(_rangeSelectedFrom)) {
               _rangeSelectedTo = _rangeSelectedFrom;
@@ -212,6 +213,7 @@ class _SimpleCalendarWithSingleSelectionState
           ]),
         ),
         const SizedBox(height: 32),
+        Center(child: CalendarCombo()),
         Center(
           child: Container(
             key: ValueKey(_scrollDirection),
@@ -236,11 +238,12 @@ class _SimpleCalendarWithSingleSelectionState
                 var day =
                     Calendar.buildDefaultDay(context, date, type, column, row);
                 if (type != DayType.extraLow && type != DayType.extraHigh) {
-                  day = Calendar.buildSmoothSelection(date, type, column, row,
+                  day = SelectableCalendar.buildDefaultSelection(
+                      context, date, type, column, row,
                       day: day,
                       isSelected: (_) =>
                           _.month == date.month && _isSelected(_),
-                      opacity: hoverMode ? 0.3 : 1.0);
+                      preselect: hoverMode);
                 }
 
                 return _selectionType != SelectionType.none &&

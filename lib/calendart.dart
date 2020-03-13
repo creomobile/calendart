@@ -1,5 +1,8 @@
 library multicalendar;
 
+import 'dart:ui';
+
+import 'package:combos/combos.dart';
 import 'package:flutter/material.dart';
 
 enum DayType { extraLow, current, today, extraHigh }
@@ -142,68 +145,6 @@ class Calendar extends StatefulWidget {
           decoration: type == DayType.today ? TextDecoration.underline : null,
         ),
       ));
-
-  static Widget buildSimpleSelection(
-      BuildContext context, DateTime date, DayType type, int column, int row,
-      {@required Widget day,
-      @required bool selected,
-      bool selectExtra = false,
-      Color color = Colors.blueAccent,
-      double opacity = 1.0,
-      Radius radius = const Radius.circular(9999)}) {
-    final select = selected &&
-        (selectExtra ||
-            (type != DayType.extraLow && type != DayType.extraHigh));
-    return Container(
-      child: select
-          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
-          : day,
-      decoration: select
-          ? BoxDecoration(
-              color: color.withOpacity(0.1 * opacity),
-              border: Border.all(color: color.withOpacity(opacity)),
-              borderRadius: BorderRadius.all(radius),
-            )
-          : null,
-    );
-  }
-
-  static Widget buildSmoothSelection(
-      DateTime date, DayType type, int column, int row,
-      {@required Widget day,
-      bool Function(DateTime date) isSelected,
-      Color color = Colors.blueAccent,
-      double opacity = 1.0,
-      Radius radius = const Radius.circular(9999)}) {
-    final selected = isSelected(date);
-    final leftSelected =
-        column != 0 && isSelected(date.subtract(const Duration(days: 1)));
-    final rightSelected = column != DateTime.daysPerWeek - 1 &&
-        isSelected(date.add(const Duration(days: 1)));
-    final topSelected = row != 0 &&
-        isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
-    final bottomSelected = row != 5 &&
-        isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
-
-    final opacityColor = color.withOpacity(opacity);
-    final borderSide = BorderSide(color: opacityColor);
-    return Container(
-      child: selected
-          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
-          : day,
-      decoration: selected
-          ? BoxDecoration(
-              color: opacityColor.withOpacity(0.1),
-              border: Border(
-                left: leftSelected ? BorderSide.none : borderSide,
-                right: rightSelected ? BorderSide.none : borderSide,
-                top: topSelected ? BorderSide.none : borderSide,
-                bottom: bottomSelected ? BorderSide.none : borderSide,
-              ),
-            )
-          : null,
-    );
-  }
 }
 
 class CalendarState extends State<Calendar> {
@@ -366,4 +307,247 @@ class _SnapScrollPhysics extends ScrollPhysics {
 
   @override
   bool get allowImplicitScrolling => false;
+}
+
+typedef SelectionBuilder = Widget Function(
+    BuildContext context, DateTime date, DayType type, int colunm, int row,
+    {@required Widget day,
+    @required bool Function(DateTime date) isSelected,
+    @required bool preselect});
+
+class SelectableCalendar<TSelection> extends StatefulWidget {
+  const SelectableCalendar({
+    Key key,
+    this.selected,
+    this.onSelectedChanged,
+    this.buildSelection = buildDefaultSelection,
+  }) : super(key: key);
+
+  final TSelection selected;
+  final ValueChanged<TSelection> onSelectedChanged;
+  final SelectionBuilder buildSelection;
+
+  @override
+  SelectableCalendarState createState() => SelectableCalendarState();
+
+  static Widget buildDefaultSelection(
+      BuildContext context, DateTime date, DayType type, int column, int row,
+      {@required Widget day,
+      @required bool Function(DateTime date) isSelected,
+      bool preselect = false,
+      Color color = Colors.blueAccent,
+      double opacity}) {
+    final selected = isSelected(date);
+    final leftSelected =
+        column != 0 && isSelected(date.subtract(const Duration(days: 1)));
+    final rightSelected = column != DateTime.daysPerWeek - 1 &&
+        isSelected(date.add(const Duration(days: 1)));
+    final topSelected = row != 0 &&
+        isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
+    final bottomSelected = row != 5 &&
+        isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
+
+    final opacityColor = color.withOpacity(opacity ?? preselect ? 0.3 : 1.0);
+    final borderSide = BorderSide(color: opacityColor);
+    return Container(
+      child: selected
+          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
+          : day,
+      decoration: selected
+          ? BoxDecoration(
+              color: opacityColor.withOpacity(0.1),
+              border: Border(
+                left: leftSelected ? BorderSide.none : borderSide,
+                right: rightSelected ? BorderSide.none : borderSide,
+                top: topSelected ? BorderSide.none : borderSide,
+                bottom: bottomSelected ? BorderSide.none : borderSide,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class SelectableCalendarState extends State<SelectableCalendar> {
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
+typedef CalendarsDecoratorBuilder = Widget Function(BuildContext context,
+    bool mirrored, DateTime displayDate, Widget calendars);
+
+class CalendarCombo extends StatefulWidget {
+  const CalendarCombo({
+    Key key,
+    this.calendarWidth = 300,
+    this.calendarHeight = 300,
+    this.buildCalendarsDecorator,
+
+    // *Calendar Properties
+    this.displayDate,
+    this.firstDayOfWeekIndex,
+    this.showDaysOfWeek = true,
+    this.dayOfWeekBuilder = Calendar.buildDefaultDayOfWeek,
+    this.dayBuilder = Calendar.buildDefaultDay,
+    this.onDisplayDateChanged,
+    this.columns = 1,
+    this.rows = 1,
+    this.scrollDirection = Axis.horizontal,
+    this.buildCalendarDecorator,
+
+    // *Popup Properties
+    this.position = PopupPosition.bottomMinMatch,
+    this.offset,
+    this.autoMirror = true,
+    this.screenPadding = Combo.defaultScreenPadding,
+    this.autoOpen = PopupAutoOpen.tap,
+    this.autoClose = PopupAutoClose.tapOutsideWithChildIgnorePointer,
+    this.animation = PopupAnimation.fade,
+    this.animationDuration = Combo.defaultAnimationDuration,
+    this.openedChanged,
+    this.hoveredChanged,
+    this.onTap,
+    this.focusColor,
+    this.hoverColor,
+    this.highlightColor,
+    this.splashColor,
+  })  : assert(calendarWidth != null),
+        assert(calendarHeight != null),
+        assert(showDaysOfWeek != null),
+        assert(dayOfWeekBuilder != null),
+        assert(dayBuilder != null),
+        assert(columns > 0),
+        assert(rows > 0),
+        assert(scrollDirection != null),
+        assert(position != null),
+        assert(autoMirror != null),
+        assert(autoClose != null),
+        assert(animation != null),
+        super(key: key);
+
+  final double calendarWidth;
+  final double calendarHeight;
+  final CalendarsDecoratorBuilder buildCalendarsDecorator;
+
+  // *Calendar Properties
+
+  final DateTime displayDate;
+  final int firstDayOfWeekIndex;
+  final bool showDaysOfWeek;
+  final IndexedWidgetBuilder dayOfWeekBuilder;
+  final DayBuilder dayBuilder;
+  final ValueChanged<DateTime> onDisplayDateChanged;
+  final int columns;
+  final int rows;
+  final Axis scrollDirection;
+  final CalendarDecoratorBuilder buildCalendarDecorator;
+
+  // *Popup Properties
+
+  /// Determines popup position depend on [child]
+  final PopupPosition position;
+
+  /// The offset to apply to the popup position
+  final Offset offset;
+
+  /// If true, popup position may depends on screen edges [screenPadding] values.
+  final bool autoMirror;
+
+  //final double requiredSpace;
+
+  /// Determines the padding of screen edges and clipping popups.
+  /// (may be useful for hiding popups in app bar area)
+  final EdgeInsets screenPadding;
+
+  /// Determines automatically opening mode of the popup
+  final PopupAutoOpen autoOpen;
+
+  /// Determines automatically closing mode of the popup
+  final PopupAutoClose autoClose;
+
+  /// Determines [Combo.popup] open/close animation
+  final PopupAnimation animation;
+
+  /// Duration of open/close animation
+  final Duration animationDuration;
+
+  /// Callbacks when the popup is opening or closing
+  final ValueChanged<bool> openedChanged;
+
+  /// Callbacks when the mouse pointer enters on or exits from child or popup
+  /// and its children - when popup contains another [Combo] widgets.
+  final ValueChanged<bool> hoveredChanged;
+
+  /// Called when the user taps on [child].
+  /// Also can be called by 'long tap' event if [autoOpen] is set to [PopupAutoOpen.hovered]
+  /// and platform is not 'Web'
+  final GestureTapCallback onTap;
+
+  /// The color of the ink response when the parent widget is focused.
+  final Color focusColor;
+
+  /// The color of the ink response when a pointer is hovering over it.
+  final Color hoverColor;
+
+  /// The highlight color of the ink response when pressed.
+  final Color highlightColor;
+
+  /// The splash color of the ink response.
+  final Color splashColor;
+
+  @override
+  CalendarComboState createState() => CalendarComboState();
+}
+
+class CalendarComboState extends State<CalendarCombo> {
+  final _comboKey = GlobalKey<ComboState>();
+
+  void open() => _comboKey.currentState?.open();
+  void close() => _comboKey.currentState?.close();
+
+  @override
+  Widget build(BuildContext context) => Combo(
+        key: _comboKey,
+        child: Container(color: Colors.red, height: 48, width: 200),
+        popupBuilder: (context, mirrored) {
+          final calendar = SizedBox(
+              width: widget.calendarWidth * widget.columns,
+              height: widget.calendarHeight * widget.rows,
+              child: Calendar(
+                displayDate: widget.displayDate,
+                firstDayOfWeekIndex: widget.firstDayOfWeekIndex,
+                showDaysOfWeek: widget.showDaysOfWeek,
+                dayOfWeekBuilder: widget.dayOfWeekBuilder,
+                dayBuilder: widget.dayBuilder,
+                onDisplayDateChanged: widget.onDisplayDateChanged,
+                columns: widget.columns,
+                rows: widget.rows,
+                scrollDirection: widget.scrollDirection,
+                buildCalendarDecorator: widget.buildCalendarDecorator,
+              ));
+
+          return widget.buildCalendarsDecorator == null
+              ? Material(elevation: 4, child: calendar)
+              : widget.buildCalendarsDecorator(
+                  context, mirrored, widget.displayDate, calendar);
+        },
+        position: widget.position,
+        offset: widget.offset,
+        autoMirror: widget.autoMirror,
+        requiredSpace: widget.calendarHeight * widget.rows,
+        screenPadding: widget.screenPadding,
+        autoOpen: widget.autoOpen,
+        autoClose: widget.autoClose,
+        animation: widget.animation,
+        animationDuration: widget.animationDuration,
+        openedChanged: widget.openedChanged,
+        hoveredChanged: widget.hoveredChanged,
+        onTap: widget.onTap,
+        focusColor: widget.focusColor,
+        hoverColor: widget.hoverColor,
+        highlightColor: widget.highlightColor,
+        splashColor: widget.splashColor,
+      );
 }

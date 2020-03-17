@@ -105,7 +105,9 @@ class Calendar extends StatefulWidget {
     this.columns = 1,
     this.rows = 1,
     this.scrollDirection = Axis.horizontal,
-    this.buildCalendarDecorator,
+    this.calendarDecoratorBuilder,
+    this.horizontalSeparator,
+    this.verticalSeparator,
   })  : assert(showDaysOfWeek != null),
         assert(dayOfWeekBuilder != null),
         assert(dayBuilder != null),
@@ -123,7 +125,9 @@ class Calendar extends StatefulWidget {
   final int columns;
   final int rows;
   final Axis scrollDirection;
-  final CalendarDecoratorBuilder buildCalendarDecorator;
+  final CalendarDecoratorBuilder calendarDecoratorBuilder;
+  final PreferredSizeWidget horizontalSeparator;
+  final PreferredSizeWidget verticalSeparator;
 
   @override
   CalendarState createState() => CalendarState(displayDate);
@@ -210,10 +214,21 @@ class CalendarState extends State<Calendar> {
   @override
   Widget build(BuildContext context) =>
       LayoutBuilder(builder: (context, constrants) {
-        _calendarWidth = constrants.maxWidth / widget.columns;
-        _calendarHeight = constrants.maxHeight / widget.rows;
+        final horizontalSeparator = widget.horizontalSeparator;
+        final verticalSeparator = widget.verticalSeparator;
+        final separatorWidth = horizontalSeparator?.preferredSize?.width ?? 0.0;
+        final separatorHeight = verticalSeparator?.preferredSize?.height ?? 0.0;
+
         final scrollDirection = widget.scrollDirection;
         final horizontal = scrollDirection == Axis.horizontal;
+
+        final maxWidth =
+            constrants.maxWidth + (horizontal ? separatorWidth : 0.0);
+        final maxHeight =
+            constrants.maxHeight + (!horizontal ? separatorHeight : 0.0);
+
+        _calendarWidth = maxWidth / widget.columns;
+        _calendarHeight = maxHeight / widget.rows;
 
         return NotificationListener<ScrollEndNotification>(
           onNotification: (_) {
@@ -235,33 +250,66 @@ class CalendarState extends State<Calendar> {
             itemBuilder: (context, index) {
               Widget build(int row, [int column = 0]) {
                 final date = _getDate(row, column);
-                final calendar = _Calendar(
+                Widget calendar = _Calendar(
                   displayDate: date,
                   firstDayOfWeekIndex: widget.firstDayOfWeekIndex,
                   showDaysOfWeek: widget.showDaysOfWeek,
                   dayOfWeekBuilder: widget.dayOfWeekBuilder,
                   dayBuilder: widget.dayBuilder,
                 );
+                if (widget.calendarDecoratorBuilder != null) {
+                  calendar =
+                      widget.calendarDecoratorBuilder(context, date, calendar);
+                }
+                final separator =
+                    horizontal ? horizontalSeparator : verticalSeparator;
+                if (separator != null) {
+                  final separatedItems = [Expanded(child: calendar), separator];
+                  calendar = horizontal
+                      ? Row(children: separatedItems)
+                      : Column(children: separatedItems);
+                }
+
                 return SizedBox(
-                  width: _calendarWidth,
-                  height: _calendarHeight,
-                  child: widget.buildCalendarDecorator == null
-                      ? calendar
-                      : widget.buildCalendarDecorator(context, date, calendar),
-                );
+                    width: _calendarWidth,
+                    height: _calendarHeight,
+                    child: calendar);
               }
 
-              final calendars =
+              var calendars =
                   Iterable.generate(horizontal ? widget.rows : widget.columns)
                       .map((_) => build(
                           horizontal ? index + _ * widget.columns : index,
                           horizontal ? 0 : _))
                       .toList();
-              return calendars.length == 1
-                  ? calendars[0]
-                  : horizontal
-                      ? Column(children: calendars)
-                      : Row(children: calendars);
+              if (calendars.length == 1) return calendars[0];
+
+              final separator = horizontal
+                  ? verticalSeparator == null
+                      ? null
+                      : SizedBox(
+                          width: _calendarWidth - separatorWidth,
+                          child: verticalSeparator)
+                  : horizontalSeparator == null
+                      ? null
+                      : SizedBox(
+                          height: _calendarHeight - separatorHeight,
+                          child: horizontalSeparator);
+              if (separator != null) {
+                calendars = calendars
+                    .map((e) =>
+                        [if (e != calendars[0]) separator, Expanded(child: e)])
+                    .expand((e) => e)
+                    .toList();
+              }
+
+              return horizontal
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: calendars)
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: calendars);
             },
           ),
         );

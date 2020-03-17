@@ -47,6 +47,10 @@ class _SimpleCalendarWithSingleSelectionState
     extends State<SimpleCalendarWithSingleSelection> {
   final _calendarProperties = CalendarProperties();
   GlobalKey<CalendarState> _calendarKey2;
+  double _width;
+  double _height;
+  double _separatorWidth;
+  double _separatorHeight;
 
   DateTime _singleSelected;
   final _multiSelected = <DateTime>{};
@@ -110,8 +114,61 @@ class _SimpleCalendarWithSingleSelectionState
     }
   }
 
-  double _width;
-  double _height;
+  PreferredSizeWidget buildHorizontalSeparator(double width, bool custom) {
+    final size = Size.fromWidth(width);
+    return PreferredSize(
+      preferredSize: size,
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.blueAccent.withOpacity(0),
+                              Colors.blueAccent,
+                              Colors.blueAccent.withOpacity(0),
+                            ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
+
+  PreferredSizeWidget buildVerticalSeparator(double height, bool custom) {
+    final size = Size.fromHeight(height);
+    return PreferredSize(
+      preferredSize: Size.fromHeight(height),
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      alignment: Alignment.center,
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Colors.blueAccent.withOpacity(0),
+                          Colors.blueAccent,
+                          Colors.blueAccent.withOpacity(0),
+                        ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -122,14 +179,27 @@ class _SimpleCalendarWithSingleSelectionState
               DemoItem<CalendarProperties>(
                 properties: _calendarProperties,
                 childBuilder: (properties) {
-                  final width = properties.width.value.toDouble() *
-                      properties.columns.value;
-                  final height = properties.height.value.toDouble() *
-                      properties.rows.value;
+                  final separatorWidth =
+                      properties.separatorWidth.value?.toDouble() ?? 0.0;
+                  final separatorHeight =
+                      properties.separatorHeight.value?.toDouble() ?? 0.0;
+
+                  final width = properties.columns.value *
+                          (properties.width.value.toDouble() + separatorWidth) -
+                      separatorWidth;
+                  final height = properties.rows.value *
+                          (properties.height.value.toDouble() +
+                              separatorHeight) -
+                      separatorHeight;
                   // update calendar widget if size changed
-                  if (width != _width || height != _height) {
+                  if (width != _width ||
+                      height != _height ||
+                      separatorWidth != _separatorWidth ||
+                      separatorHeight != _separatorHeight) {
                     _width = width;
                     _height = height;
+                    _separatorWidth = separatorWidth;
+                    _separatorHeight = separatorHeight;
                     _calendarKey2 = GlobalKey<CalendarState>();
                   }
 
@@ -182,22 +252,39 @@ class _SimpleCalendarWithSingleSelectionState
                                 )
                               : day;
                         },
-                        buildCalendarDecorator: (context, date, calendar) =>
-                            Row(
-                          children: [
-                            Expanded(
-                              child: Column(children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Text('${date.month} ${date.year}',
-                                      style: TextStyle(color: Colors.grey)),
-                                ),
-                                Expanded(child: calendar),
-                              ]),
-                            ),
-                            const SizedBox(width: 24),
-                          ],
-                        ),
+                        calendarDecoratorBuilder: properties.showDecorator.value
+                            ? (context, date, calendar) => Container(
+                                  decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.center,
+                                    colors: [
+                                      Colors.blueAccent,
+                                      Colors.blueAccent.withOpacity(0),
+                                    ],
+                                    stops: [0.0, 0.5],
+                                  )),
+                                  child: Column(children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Text('${date.month} ${date.year}',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                    Expanded(child: calendar),
+                                  ]),
+                                )
+                            : null,
+                        horizontalSeparator:
+                            properties.separatorWidth.value == 0
+                                ? null
+                                : buildHorizontalSeparator(separatorWidth,
+                                    properties.customSeparators.value),
+                        verticalSeparator: properties.separatorHeight.value == 0
+                            ? null
+                            : buildVerticalSeparator(separatorHeight,
+                                properties.customSeparators.value),
                       ));
                 },
               ),
@@ -255,6 +342,10 @@ class CalendarProperties {
       getList: () => SelectionType.values,
       value: SelectionType.single);
   final showDaysOfWeek = BoolEditor(title: 'Show Days of Week', value: true);
+  final showDecorator = BoolEditor(title: 'Show Custom Decorator', value: true);
+  final separatorWidth = IntEditor(title: 'Separator Width', value: 32);
+  final separatorHeight = IntEditor(title: 'Separator Height', value: 32);
+  final customSeparators = BoolEditor(title: 'Custom Separators', value: true);
   final firstDayOfWeekIndex = EnumEditor<int>(
       title: 'First Day of Week Index',
       value: 0,
@@ -270,6 +361,10 @@ class CalendarProperties {
         scrollDirection,
         selectionType,
         showDaysOfWeek,
+        showDecorator,
+        separatorWidth,
+        separatorHeight,
+        customSeparators,
         firstDayOfWeekIndex,
       ];
 }

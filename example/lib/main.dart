@@ -1,6 +1,7 @@
 import 'package:calendart/calendart.dart';
+import 'package:demo_items/demo_items.dart';
+import 'package:editors/editors.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() => runApp(MyApp());
 
@@ -44,26 +45,8 @@ class SimpleCalendarWithSingleSelection extends StatefulWidget {
 
 class _SimpleCalendarWithSingleSelectionState
     extends State<SimpleCalendarWithSingleSelection> {
-  final _calendarKey = GlobalKey<CalendarState>();
-  final _calendarWidthController = TextEditingController(text: '300');
-  final _calendarHeightController = TextEditingController(text: '300');
-  final _columnsController = TextEditingController(text: '1');
-  final _rowsController = TextEditingController(text: '1');
-  final _yearController =
-      TextEditingController(text: DateTime.now().year.toString());
-  final _monthController =
-      TextEditingController(text: DateTime.now().month.toString());
-
-  var _calendarWidth = 300;
-  var _calendarHeight = 300;
-  var _columns = 1;
-  int get columns => _columns > 0 ? _columns : 1;
-  var _rows = 1;
-  int get rows => _rows > 0 ? _rows : 1;
-  var _scrollDirection = Axis.horizontal;
-  var _year = DateTime.now().year;
-  var _month = DateTime.now().month;
-  var _selectionType = SelectionType.single;
+  final _calendarProperties = CalendarProperties();
+  GlobalKey<CalendarState> _calendarKey2;
 
   DateTime _singleSelected;
   final _multiSelected = <DateTime>{};
@@ -71,13 +54,8 @@ class _SimpleCalendarWithSingleSelectionState
   DateTime _rangeSelectedTo;
   DateTime _hovered;
 
-  bool get _hoverMode =>
-      _selectionType == SelectionType.range &&
-      _rangeSelectedFrom != null &&
-      _rangeSelectedTo == null;
-
-  bool _isSelected(DateTime date) {
-    switch (_selectionType) {
+  bool _isSelected(SelectionType selectionType, DateTime date) {
+    switch (selectionType) {
       case SelectionType.single:
         return date == _singleSelected;
       case SelectionType.multi:
@@ -101,8 +79,8 @@ class _SimpleCalendarWithSingleSelectionState
     }
   }
 
-  void _setSelected(DateTime date) {
-    switch (_selectionType) {
+  void _setSelected(SelectionType selectionType, DateTime date) {
+    switch (selectionType) {
       case SelectionType.single:
         if (_singleSelected != date) setState(() => _singleSelected = date);
         break;
@@ -132,199 +110,166 @@ class _SimpleCalendarWithSingleSelectionState
     }
   }
 
+  double _width;
+  double _height;
+
   @override
-  Widget build(BuildContext context) {
-    Widget buildIntSelector(TextEditingController controller, String labelText,
-            void Function(int value) setValue,
-            [enabled = true]) =>
-        SizedBox(
-          width: 200,
-          child: TextField(
-            controller: controller,
-            enabled: enabled,
-            inputFormatters: [
-              IntTextInputFormatter(minValue: 0, maxValue: 5000)
-            ],
-            decoration: InputDecoration(labelText: labelText),
-            onChanged: (_) => setState(() => setValue(int.tryParse(_) ?? 0)),
-          ),
-        );
+  Widget build(BuildContext context) => ListView(
+        padding: EdgeInsets.all(16),
+        children: [
+          Column(
+            children: [
+              DemoItem<CalendarProperties>(
+                properties: _calendarProperties,
+                childBuilder: (properties) {
+                  final width = properties.width.value.toDouble() *
+                      properties.columns.value;
+                  final height = properties.height.value.toDouble() *
+                      properties.rows.value;
+                  // update calendar widget if size changed
+                  if (width != _width || height != _height) {
+                    _width = width;
+                    _height = height;
+                    _calendarKey2 = GlobalKey<CalendarState>();
+                  }
 
-    Widget buildEnumSelector<T>(String title, Iterable<T> values, T value,
-            void Function(T value) setValue) =>
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(title,
-              style:
-                  TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          DropdownButton<T>(
-            items: values
-                .map((_) => DropdownMenuItem<T>(
-                    value: _, child: Text(TextHelper.enumToString(_))))
-                .toList(),
-            value: value,
-            onChanged: (_) => setState(() => setValue(_)),
-          ),
-        ]);
+                  return ConstrainedBox(
+                      constraints:
+                          BoxConstraints(maxWidth: width, maxHeight: height),
+                      child: Calendar(
+                        key: _calendarKey2,
+                        displayDate: DateTime(
+                            properties.year.value, properties.month.value),
+                        columns: properties.columns.value,
+                        rows: properties.rows.value,
+                        scrollDirection: properties.scrollDirection.value,
+                        showDaysOfWeek: properties.showDaysOfWeek.value,
+                        firstDayOfWeekIndex:
+                            properties.firstDayOfWeekIndex.value,
+                        dayBuilder: (context, date, type, column, row) {
+                          final selectionType = properties.selectionType.value;
+                          final hoverMode =
+                              selectionType == SelectionType.range &&
+                                  _rangeSelectedFrom != null &&
+                                  _rangeSelectedTo == null;
+                          var day = Calendar.buildDefaultDay(
+                              context, date, type, column, row);
+                          if (type != DayType.extraLow &&
+                              type != DayType.extraHigh) {
+                            day = SelectableCalendar.buildDefaultSelection(
+                                context, date, type, column, row,
+                                day: day,
+                                isSelected: (_) =>
+                                    _.month == date.month &&
+                                    _isSelected(selectionType, _),
+                                preselect: hoverMode);
+                          }
 
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Wrap(spacing: 24, runSpacing: 16, children: [
-            // calendar width
-            buildIntSelector(_calendarWidthController, 'Calendar Width',
-                (_) => _calendarWidth = _),
-            // calendar height
-            buildIntSelector(_calendarHeightController, 'Calendar Height',
-                (_) => _calendarHeight = _),
-            // columns
-            buildIntSelector(
-                _columnsController, 'Columns', (_) => _columns = _),
-            // rows
-            buildIntSelector(_rowsController, 'Rows', (_) => _rows = _),
-
-            // scroll direction
-            buildEnumSelector<Axis>('Scroll Direction:', Axis.values,
-                _scrollDirection, (_) => _scrollDirection = _),
-
-            // year
-            buildIntSelector(_yearController, 'Year', (_) => _year = _),
-
-            // month
-            buildIntSelector(_monthController, 'Month', (_) => _month = _),
-
-            // dec
-            IconButton(
-                icon: Icon(Icons.arrow_back),
-                onPressed: () => _calendarKey.currentState?.dec()),
-
-            // inc
-            IconButton(
-                icon: Icon(Icons.arrow_forward),
-                onPressed: () => _calendarKey.currentState?.inc()),
-
-            // scroll direction
-            buildEnumSelector<SelectionType>(
-                'Selection Type:',
-                SelectionType.values,
-                _selectionType,
-                (_) => _selectionType = _),
-          ]),
-        ),
-        const SizedBox(height: 32),
-        Center(child: CalendarCombo()),
-        Center(
-          child: Container(
-            key: ValueKey(_scrollDirection),
-            constraints: BoxConstraints(
-                maxWidth: _calendarWidth.toDouble() * columns,
-                maxHeight: _calendarHeight.toDouble() * rows),
-            padding: const EdgeInsets.all(16),
-            child: Calendar(
-              key: _calendarKey,
-              columns: columns,
-              rows: rows,
-              displayDate: DateTime(_year, _month == 0 ? 1 : _month),
-              scrollDirection: _scrollDirection,
-              onDisplayDateChanged: (_) => setState(() {
-                _year = _.year;
-                _month = _.month;
-                _yearController.text = _year.toString();
-                _monthController.text = _month.toString();
-              }),
-              dayBuilder: (context, date, type, column, row) {
-                final hoverMode = _hoverMode;
-                var day =
-                    Calendar.buildDefaultDay(context, date, type, column, row);
-                if (type != DayType.extraLow && type != DayType.extraHigh) {
-                  day = SelectableCalendar.buildDefaultSelection(
-                      context, date, type, column, row,
-                      day: day,
-                      isSelected: (_) =>
-                          _.month == date.month && _isSelected(_),
-                      preselect: hoverMode);
-                }
-
-                return _selectionType != SelectionType.none &&
-                        (type == DayType.today || type == DayType.current)
-                    ? InkResponse(
-                        child: day,
-                        onTap: () => _setSelected(date),
-                        onHover: hoverMode
-                            ? (hovered) {
-                                if (hovered) setState(() => _hovered = date);
-                              }
-                            : null,
-                      )
-                    : day;
-              },
-              buildCalendarDecorator: (context, date, calendar) => Row(
-                children: [
-                  Expanded(
-                    child: Column(children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text('${date.month} ${date.year}',
-                            style: TextStyle(color: Colors.grey)),
-                      ),
-                      Expanded(child: calendar),
-                    ]),
-                  ),
-                  const SizedBox(width: 24),
-                ],
+                          return selectionType != SelectionType.none &&
+                                  (type == DayType.today ||
+                                      type == DayType.current)
+                              ? InkResponse(
+                                  child: day,
+                                  onTap: () =>
+                                      _setSelected(selectionType, date),
+                                  onHover: hoverMode
+                                      ? (hovered) {
+                                          if (hovered) {
+                                            setState(() => _hovered = date);
+                                          }
+                                        }
+                                      : null,
+                                )
+                              : day;
+                        },
+                        buildCalendarDecorator: (context, date, calendar) =>
+                            Row(
+                          children: [
+                            Expanded(
+                              child: Column(children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Text('${date.month} ${date.year}',
+                                      style: TextStyle(color: Colors.grey)),
+                                ),
+                                Expanded(child: calendar),
+                              ]),
+                            ),
+                            const SizedBox(width: 24),
+                          ],
+                        ),
+                      ));
+                },
               ),
-            ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
+        ],
+      );
 }
 
 enum SelectionType { none, single, multi, range }
 
-class IntTextInputFormatter extends TextInputFormatter {
-  IntTextInputFormatter({this.minValue, this.maxValue});
-
-  final int minValue;
-  final int maxValue;
-
-  String format(String oldValue, String newValue) {
-    if (newValue?.isNotEmpty != true) return '';
-    if (newValue.contains('-')) return oldValue;
-
-    var i = int.tryParse(newValue);
-    if (i == null) return oldValue;
-    if (minValue != null && i < minValue) i = minValue;
-    if (maxValue != null && i > maxValue) i = maxValue;
-
-    return i.toString();
-  }
-
+class DemoItem<TProperties extends CalendarProperties>
+    extends DemoItemBase<TProperties> {
+  const DemoItem({
+    Key key,
+    @required TProperties properties,
+    @required ChildBuilder<TProperties> childBuilder,
+  }) : super(key: key, properties: properties, childBuilder: childBuilder);
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final value = format(oldValue.text, newValue.text);
-    return value != newValue.text
-        ? newValue.copyWith(
-            text: value,
-            selection: TextSelection.collapsed(offset: value.length))
-        : newValue.copyWith(text: value);
+  _DemoItemState<TProperties> createState() => _DemoItemState<TProperties>();
+}
+
+class _DemoItemState<TProperties extends CalendarProperties>
+    extends DemoItemStateBase<TProperties> {
+  @override
+  Widget buildProperties() {
+    final editors = widget.properties.editors;
+    return EditorsContext(
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        shrinkWrap: true,
+        physics: ClampingScrollPhysics(),
+        itemCount: editors.length,
+        itemBuilder: (context, index) => editors[index].build(),
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
+      ),
+    );
   }
 }
 
-class TextHelper {
-  static String _camelToWords(String value) {
-    final codes = value.runes
-        .skip(1)
-        .map((_) => String.fromCharCode(_))
-        .map((_) => _.toUpperCase() == _ ? ' $_' : _)
-        .expand((_) => _.runes);
+class CalendarProperties {
+  final year = IntEditor(title: 'Year', value: DateTime.now().year);
+  final month = IntEditor(
+      title: 'Month', value: DateTime.now().month, minValue: 1, maxValue: 12);
+  final width = IntEditor(title: 'Width', value: 300);
+  final height = IntEditor(title: 'Height', value: 300);
+  final columns = IntEditor(title: 'Columns', value: 1, minValue: 1);
+  final rows = IntEditor(title: 'Rows', value: 1, minValue: 1);
+  final scrollDirection = EnumEditor<Axis>(
+      title: 'Scroll Direction',
+      getList: () => Axis.values,
+      value: Axis.horizontal);
+  final selectionType = EnumEditor<SelectionType>(
+      title: 'Selection Type',
+      getList: () => SelectionType.values,
+      value: SelectionType.single);
+  final showDaysOfWeek = BoolEditor(title: 'Show Days of Week', value: true);
+  final firstDayOfWeekIndex = EnumEditor<int>(
+      title: 'First Day of Week Index',
+      value: 0,
+      getList: () => [0, 1, 2, 3, 4, 5, 6]);
 
-    return value[0].toUpperCase() + String.fromCharCodes(codes);
-  }
-
-  static String enumToString(dynamic value) =>
-      value == null ? '' : _camelToWords(value.toString().split('.')[1]);
+  List<Editor> get editors => [
+        year,
+        month,
+        width,
+        height,
+        columns,
+        rows,
+        scrollDirection,
+        selectionType,
+        showDaysOfWeek,
+        firstDayOfWeekIndex,
+      ];
 }

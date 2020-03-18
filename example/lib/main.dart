@@ -1,4 +1,5 @@
 import 'package:calendart/calendart.dart';
+import 'package:combos/combos.dart';
 import 'package:demo_items/demo_items.dart';
 import 'package:editors/editors.dart';
 import 'package:flutter/material.dart';
@@ -88,6 +89,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
                 DemoItem<CalendarProperties>(
                   properties: _calendarProperties,
                   childBuilder: (properties) {
@@ -103,19 +105,49 @@ class _HomePageState extends State<HomePage> {
                             (properties.height.value.toDouble() +
                                 separatorHeight) -
                         separatorHeight;
-                    CalendarCombo createCombo<T>() => CalendarCombo<T>(
-                          displayDate: DateTime(
-                              properties.year.value, properties.month.value),
-                          columns: properties.columns.value,
-                          rows: properties.rows.value,
-                          popupSize: Size(width, height),
-                          onDisplayDateChanged: (date) {
-                            properties.year.value = date.year;
-                            properties.month.value = date.month;
-                          },
+                    Widget createCombo<T>() => ComboContext(
+                          parameters: ComboParameters(
+                            childDecoratorBuilder: (child) => properties
+                                        .selected ==
+                                    null
+                                ? Stack(
+                                    children: [
+                                      child,
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: Row(
+                                            children: [
+                                              const Expanded(
+                                                  child: Text(
+                                                'Calendar Combo',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    color: Colors.grey),
+                                              )),
+                                              const Icon(Icons.arrow_drop_down),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : child,
+                          ),
+                          child: CalendarCombo<T>(
+                            displayDate: DateTime(
+                                properties.year.value, properties.month.value),
+                            columns: properties.columns.value,
+                            rows: properties.rows.value,
+                            popupSize: Size(width, height),
+                            onDisplayDateChanged: (date) {
+                              properties.year.value = date.year;
+                              properties.month.value = date.month;
+                            },
+                            onSelectedChanged: (e) => properties.selected = e,
+                          ),
                         );
                     return ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: width),
+                      constraints: BoxConstraints(maxWidth: 300),
                       child: () {
                         switch (properties.selectionType.value) {
                           case SelectionType.single:
@@ -278,6 +310,7 @@ class CalendarProperties {
   final year = IntEditor(title: 'Year', value: DateTime.now().year);
   final month = IntEditor(
       title: 'Month', value: DateTime.now().month, minValue: 1, maxValue: 12);
+  dynamic selected;
   final width = IntEditor(title: 'Width', value: 300);
   final height = IntEditor(title: 'Height', value: 300);
   final columns = IntEditor(title: 'Columns', value: 1, minValue: 1);

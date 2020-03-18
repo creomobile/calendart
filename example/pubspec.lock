@@ -16,7 +16,7 @@ packages:
     source: hosted
     version: "1.14.11"
   combos:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: combos
       url: "https://pub.dartlang.org"

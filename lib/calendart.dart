@@ -168,12 +168,12 @@ class CalendarParameters {
         isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
     final bottomSelected = row != 5 &&
         isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
-    final opacityColor = preselect ? color.withOpacity(0.3) : color;
-    final borderSide = BorderSide(color: opacityColor);
+    final borderSide =
+        BorderSide(color: preselect ? color.withOpacity(0.3) : color);
     return Container(
       child: DefaultTextStyle(child: day, style: TextStyle(color: color)),
       decoration: BoxDecoration(
-        color: opacityColor.withOpacity(0.1),
+        color: preselect ? color.withOpacity(0.05) : color.withOpacity(0.1),
         border: Border(
           left: leftSelected ? BorderSide.none : borderSide,
           right: rightSelected ? BorderSide.none : borderSide,
@@ -198,7 +198,7 @@ class CalendarParameters {
       BuildContext context, Set<DateTime> selected) {
     final localizations = MaterialLocalizations.of(context);
     final dates =
-        selected?.map((e) => localizations.formatMonthYear(e))?.join(', ');
+        selected?.map((e) => localizations.formatMediumDate(e))?.join(', ');
     return ListTile(
         title: Text(dates?.isNotEmpty == true ? dates : '',
             overflow: TextOverflow.ellipsis));
@@ -207,10 +207,12 @@ class CalendarParameters {
   static Widget buildDefaultRangeSelectionTitle(
       BuildContext context, DatesRange selected) {
     final localizations = MaterialLocalizations.of(context);
-    return ListTile(
-        title: Text(localizations.formatMonthYear(selected.from) +
+    final range = selected == null
+        ? ''
+        : localizations.formatMediumDate(selected.from) +
             ' - ' +
-            localizations.formatMonthYear(selected.to)));
+            localizations.formatMediumDate(selected.to);
+    return ListTile(title: Text(range));
   }
 }
 
@@ -826,7 +828,8 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
             rows: widget.rows,
             selected: _selected,
             onSelectedChanged: (selected) {
-              _selected = selected;
+              setState(() => _selected = selected);
+              if (TSelection == DateTime) close();
               if (widget.onSelectedChanged != null) {
                 widget.onSelectedChanged(selected);
               }

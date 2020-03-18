@@ -46,7 +46,7 @@ class SimpleCalendarWithSingleSelection extends StatefulWidget {
 class _SimpleCalendarWithSingleSelectionState
     extends State<SimpleCalendarWithSingleSelection> {
   final _calendarProperties = CalendarProperties();
-  GlobalKey<CalendarState> _calendarKey2;
+  GlobalKey<CalendarState> _calendarKey;
   double _width;
   double _height;
   double _separatorWidth;
@@ -114,62 +114,6 @@ class _SimpleCalendarWithSingleSelectionState
     }
   }
 
-  PreferredSizeWidget buildHorizontalSeparator(double width, bool custom) {
-    final size = Size.fromWidth(width);
-    return PreferredSize(
-      preferredSize: size,
-      child: SizedBox.fromSize(
-          size: size,
-          child: custom
-              ? Container(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.blueAccent.withOpacity(0),
-                              Colors.blueAccent,
-                              Colors.blueAccent.withOpacity(0),
-                            ]),
-                      ),
-                    ),
-                  ),
-                )
-              : null),
-    );
-  }
-
-  PreferredSizeWidget buildVerticalSeparator(double height, bool custom) {
-    final size = Size.fromHeight(height);
-    return PreferredSize(
-      preferredSize: Size.fromHeight(height),
-      child: SizedBox.fromSize(
-          size: size,
-          child: custom
-              ? Container(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      alignment: Alignment.center,
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          Colors.blueAccent.withOpacity(0),
-                          Colors.blueAccent,
-                          Colors.blueAccent.withOpacity(0),
-                        ]),
-                      ),
-                    ),
-                  ),
-                )
-              : null),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => ListView(
         padding: EdgeInsets.all(16),
@@ -200,29 +144,25 @@ class _SimpleCalendarWithSingleSelectionState
                     _height = height;
                     _separatorWidth = separatorWidth;
                     _separatorHeight = separatorHeight;
-                    _calendarKey2 = GlobalKey<CalendarState>();
+                    _calendarKey = GlobalKey<CalendarState>();
                   }
 
                   return ConstrainedBox(
                       constraints:
                           BoxConstraints(maxWidth: width, maxHeight: height),
                       child: Calendar(
-                        key: _calendarKey2,
+                        key: _calendarKey,
                         displayDate: DateTime(
                             properties.year.value, properties.month.value),
                         columns: properties.columns.value,
                         rows: properties.rows.value,
-                        scrollDirection: properties.scrollDirection.value,
-                        showDaysOfWeek: properties.showDaysOfWeek.value,
-                        firstDayOfWeekIndex:
-                            properties.firstDayOfWeekIndex.value,
                         dayBuilder: (context, date, type, column, row) {
                           final selectionType = properties.selectionType.value;
                           final hoverMode =
                               selectionType == SelectionType.range &&
                                   _rangeSelectedFrom != null &&
                                   _rangeSelectedTo == null;
-                          var day = Calendar.buildDefaultDay(
+                          var day = CalendarParameters.buildDefaultDay(
                               context, date, type, column, row);
                           if (type != DayType.extraLow &&
                               type != DayType.extraHigh) {
@@ -252,39 +192,6 @@ class _SimpleCalendarWithSingleSelectionState
                                 )
                               : day;
                         },
-                        calendarDecoratorBuilder: properties.showDecorator.value
-                            ? (context, date, calendar) => Container(
-                                  decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.center,
-                                    colors: [
-                                      Colors.blueAccent,
-                                      Colors.blueAccent.withOpacity(0),
-                                    ],
-                                    stops: [0.0, 0.5],
-                                  )),
-                                  child: Column(children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Text('${date.month} ${date.year}',
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold)),
-                                    ),
-                                    Expanded(child: calendar),
-                                  ]),
-                                )
-                            : null,
-                        horizontalSeparator:
-                            properties.separatorWidth.value == 0
-                                ? null
-                                : buildHorizontalSeparator(separatorWidth,
-                                    properties.customSeparators.value),
-                        verticalSeparator: properties.separatorHeight.value == 0
-                            ? null
-                            : buildVerticalSeparator(separatorHeight,
-                                properties.customSeparators.value),
                       ));
                 },
               ),
@@ -309,6 +216,111 @@ class DemoItem<TProperties extends CalendarProperties>
 
 class _DemoItemState<TProperties extends CalendarProperties>
     extends DemoItemStateBase<TProperties> {
+  PreferredSizeWidget _buildHorizontalSeparator(double width, bool custom) {
+    final size = Size.fromWidth(width);
+    return PreferredSize(
+      preferredSize: size,
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.blueAccent.withOpacity(0),
+                              Colors.blueAccent,
+                              Colors.blueAccent.withOpacity(0),
+                            ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
+
+  PreferredSizeWidget _buildVerticalSeparator(double height, bool custom) {
+    final size = Size.fromHeight(height);
+    return PreferredSize(
+      preferredSize: Size.fromHeight(height),
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      alignment: Alignment.center,
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Colors.blueAccent.withOpacity(0),
+                          Colors.blueAccent,
+                          Colors.blueAccent.withOpacity(0),
+                        ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
+
+  @override
+  Widget buildChild() {
+    final properties = widget.properties;
+    final separatorWidth = properties.separatorWidth.value?.toDouble() ?? 0.0;
+    final separatorHeight = properties.separatorHeight.value?.toDouble() ?? 0.0;
+
+    return CalendarContext(
+        parameters: CalendarParameters(
+          firstDayOfWeekIndex: properties.firstDayOfWeekIndex.value,
+          showDaysOfWeek: properties.showDaysOfWeek.value,
+          decoratorBuilder: properties.showDecorator.value
+              ? (context, date, calendar) => Container(
+                    decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.center,
+                      colors: [
+                        Colors.blueAccent,
+                        Colors.blueAccent.withOpacity(0),
+                      ],
+                      stops: [0.0, 0.5],
+                    )),
+                    child: Column(children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('${date.month} ${date.year}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                      Expanded(child: calendar),
+                    ]),
+                  )
+              : null,
+          horizontalSeparator: separatorWidth == 0.0
+              ? const PreferredSize(
+                  preferredSize: Size.fromWidth(0), child: SizedBox())
+              : _buildHorizontalSeparator(
+                  separatorWidth, properties.customSeparators.value),
+          verticalSeparator: separatorHeight == 0.0
+              ? const PreferredSize(
+                  preferredSize: Size.fromHeight(0), child: SizedBox())
+              : _buildVerticalSeparator(
+                  separatorHeight, properties.customSeparators.value),
+          scrollDirection: properties.scrollDirection.value,
+        ),
+        child: super.buildChild());
+  }
+
   @override
   Widget buildProperties() {
     final editors = widget.properties.editors;

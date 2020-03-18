@@ -16,36 +16,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const _demos = <String, Widget>{
-    'Simple Calendar with Single Selection':
-        SimpleCalendarWithSingleSelection(),
-    'Simple Calendar with Multi Selection': SimpleCalendarWithSingleSelection(),
-  };
-
-  @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: _demos.length,
-        child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Calendar Sample App'),
-              bottom: TabBar(
-                  tabs: _demos.keys.map((_) => Tab(child: Text(_))).toList()),
-            ),
-            body: TabBarView(children: _demos.values.toList())),
-      );
-}
-
-class SimpleCalendarWithSingleSelection extends StatefulWidget {
-  const SimpleCalendarWithSingleSelection();
-
-  @override
-  _SimpleCalendarWithSingleSelectionState createState() =>
-      _SimpleCalendarWithSingleSelectionState();
-}
-
-class _SimpleCalendarWithSingleSelectionState
-    extends State<SimpleCalendarWithSingleSelection> {
   final _calendarProperties = CalendarProperties();
+  final _comboProperties = CalendarProperties();
   GlobalKey<CalendarState> _calendarKey;
   double _width;
   double _height;
@@ -53,65 +25,116 @@ class _SimpleCalendarWithSingleSelectionState
   double _separatorHeight;
 
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: EdgeInsets.all(16),
-        children: [
-          Column(
-            children: [
-              DemoItem<CalendarProperties>(
-                properties: _calendarProperties,
-                childBuilder: (properties) {
-                  final separatorWidth =
-                      properties.separatorWidth.value?.toDouble() ?? 0.0;
-                  final separatorHeight =
-                      properties.separatorHeight.value?.toDouble() ?? 0.0;
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text('Calendart sample app')),
+        body: ListView(
+          padding: EdgeInsets.all(16),
+          children: [
+            Column(
+              children: [
+                DemoItem<CalendarProperties>(
+                  properties: _calendarProperties,
+                  childBuilder: (properties) {
+                    final separatorWidth =
+                        properties.separatorWidth.value?.toDouble() ?? 0.0;
+                    final separatorHeight =
+                        properties.separatorHeight.value?.toDouble() ?? 0.0;
 
-                  final width = properties.columns.value *
-                          (properties.width.value.toDouble() + separatorWidth) -
-                      separatorWidth;
-                  final height = properties.rows.value *
-                          (properties.height.value.toDouble() +
-                              separatorHeight) -
-                      separatorHeight;
-                  // update calendar widget if size changed
-                  if (width != _width ||
-                      height != _height ||
-                      separatorWidth != _separatorWidth ||
-                      separatorHeight != _separatorHeight) {
-                    _width = width;
-                    _height = height;
-                    _separatorWidth = separatorWidth;
-                    _separatorHeight = separatorHeight;
-                    _calendarKey = GlobalKey<CalendarState>();
-                  }
-                  Calendar createCalendar<T>() => Calendar<T>(
-                        key: _calendarKey,
-                        displayDate: DateTime(
-                            properties.year.value, properties.month.value),
-                        columns: properties.columns.value,
-                        rows: properties.rows.value,
-                      );
-                  return ConstrainedBox(
-                    constraints:
-                        BoxConstraints(maxWidth: width, maxHeight: height),
-                    child: () {
-                      switch (properties.selectionType.value) {
-                        case SelectionType.single:
-                          return createCalendar<DateTime>();
-                        case SelectionType.multi:
-                          return createCalendar<Set<DateTime>>();
-                        case SelectionType.range:
-                          return createCalendar<DatesRange>();
-                        default:
-                          return createCalendar();
-                      }
-                    }(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+                    final width = properties.columns.value *
+                            (properties.width.value.toDouble() +
+                                separatorWidth) -
+                        separatorWidth;
+                    final height = properties.rows.value *
+                            (properties.height.value.toDouble() +
+                                separatorHeight) -
+                        separatorHeight;
+                    // update calendar widget if size changed
+                    if (width != _width ||
+                        height != _height ||
+                        separatorWidth != _separatorWidth ||
+                        separatorHeight != _separatorHeight) {
+                      _width = width;
+                      _height = height;
+                      _separatorWidth = separatorWidth;
+                      _separatorHeight = separatorHeight;
+                      _calendarKey = GlobalKey<CalendarState>();
+                    }
+                    Calendar createCalendar<T>() => Calendar<T>(
+                          key: _calendarKey,
+                          displayDate: DateTime(
+                              properties.year.value, properties.month.value),
+                          columns: properties.columns.value,
+                          rows: properties.rows.value,
+                          onDisplayDateChanged: (date) {
+                            properties.year.value = date.year;
+                            properties.month.value = date.month;
+                          },
+                        );
+                    return ConstrainedBox(
+                      constraints:
+                          BoxConstraints(maxWidth: width, maxHeight: height),
+                      child: () {
+                        switch (properties.selectionType.value) {
+                          case SelectionType.single:
+                            return createCalendar<DateTime>();
+                          case SelectionType.multi:
+                            return createCalendar<Set<DateTime>>();
+                          case SelectionType.range:
+                            return createCalendar<DatesRange>();
+                          default:
+                            return createCalendar();
+                        }
+                      }(),
+                    );
+                  },
+                ),
+                DemoItem<CalendarProperties>(
+                  properties: _calendarProperties,
+                  childBuilder: (properties) {
+                    final separatorWidth =
+                        properties.separatorWidth.value?.toDouble() ?? 0.0;
+                    final separatorHeight =
+                        properties.separatorHeight.value?.toDouble() ?? 0.0;
+                    final width = properties.columns.value *
+                            (properties.width.value.toDouble() +
+                                separatorWidth) -
+                        separatorWidth;
+                    final height = properties.rows.value *
+                            (properties.height.value.toDouble() +
+                                separatorHeight) -
+                        separatorHeight;
+                    CalendarCombo createCombo<T>() => CalendarCombo<T>(
+                          displayDate: DateTime(
+                              properties.year.value, properties.month.value),
+                          columns: properties.columns.value,
+                          rows: properties.rows.value,
+                          popupSize: Size(width, height),
+                          onDisplayDateChanged: (date) {
+                            properties.year.value = date.year;
+                            properties.month.value = date.month;
+                          },
+                        );
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: width),
+                      child: () {
+                        switch (properties.selectionType.value) {
+                          case SelectionType.single:
+                            return createCombo<DateTime>();
+                          case SelectionType.multi:
+                            return createCombo<Set<DateTime>>();
+                          case SelectionType.range:
+                            return createCombo<DatesRange>();
+                          default:
+                            return createCombo();
+                        }
+                      }(),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       );
 }
 

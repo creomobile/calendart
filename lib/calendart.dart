@@ -2,6 +2,7 @@ library multicalendar;
 
 import 'dart:ui';
 
+import 'package:combos/combos.dart';
 import 'package:flutter/material.dart';
 
 enum DayType { extraLow, current, today, extraHigh }
@@ -24,6 +25,17 @@ typedef SelectionBuilder = Widget Function(
 typedef CalendarDecoratorBuilder = Widget Function(
     BuildContext context, DateTime displayDate, Widget calendar);
 
+class DatesRange {
+  DatesRange(this.from, this.to)
+      : assert(from != null),
+        assert(to != null);
+  final DateTime from;
+  final DateTime to;
+}
+
+typedef DatesSelectionWidgetBuilder<TSelection> = Widget Function(
+    BuildContext context, TSelection selection);
+
 class CalendarParameters {
   const CalendarParameters({
     this.firstDayOfWeekIndex,
@@ -35,6 +47,9 @@ class CalendarParameters {
     this.horizontalSeparator,
     this.verticalSeparator,
     this.scrollDirection,
+    this.singleSelectionTitleBuilder,
+    this.multiSelectionTitleBuilder,
+    this.rangeSelectionTitleBuilder,
   });
 
   static const defaultParameters = CalendarParameters(
@@ -47,6 +62,9 @@ class CalendarParameters {
     verticalSeparator: PreferredSize(
         preferredSize: Size.fromHeight(32), child: SizedBox(height: 32)),
     scrollDirection: Axis.horizontal,
+    singleSelectionTitleBuilder: buildDefaultSingleSelectionTitle,
+    multiSelectionTitleBuilder: buildDefaultMultiSelectionTitle,
+    rangeSelectionTitleBuilder: buildDefaultRangeSelectionTitle,
   );
 
   final int firstDayOfWeekIndex;
@@ -58,6 +76,23 @@ class CalendarParameters {
   final PreferredSizeWidget horizontalSeparator;
   final PreferredSizeWidget verticalSeparator;
   final Axis scrollDirection;
+  final DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder;
+  final DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder;
+  final DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder;
+
+  Widget selectionTitleBuilder<TSelection>(
+      BuildContext context, TSelection selection) {
+    if (TSelection != dynamic) {
+      if (TSelection == DateTime) {
+        return singleSelectionTitleBuilder(context, selection as DateTime);
+      } else if (const <DateTime>{} is TSelection) {
+        return multiSelectionTitleBuilder(context, selection as Set<DateTime>);
+      } else if (TSelection == DatesRange) {
+        return rangeSelectionTitleBuilder(context, selection as DatesRange);
+      }
+    }
+    throw FormatException('Incorrect dates selection type.');
+  }
 
   CalendarParameters copyWith({
     int firstDayOfWeekIndex,
@@ -69,6 +104,9 @@ class CalendarParameters {
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
     Axis scrollDirection,
+    DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder,
+    DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder,
+    DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder,
   }) =>
       CalendarParameters(
         firstDayOfWeekIndex: firstDayOfWeekIndex ?? this.firstDayOfWeekIndex,
@@ -80,6 +118,12 @@ class CalendarParameters {
         horizontalSeparator: horizontalSeparator ?? this.horizontalSeparator,
         verticalSeparator: verticalSeparator ?? this.verticalSeparator,
         scrollDirection: scrollDirection ?? this.scrollDirection,
+        singleSelectionTitleBuilder:
+            singleSelectionTitleBuilder ?? this.singleSelectionTitleBuilder,
+        multiSelectionTitleBuilder:
+            multiSelectionTitleBuilder ?? this.multiSelectionTitleBuilder,
+        rangeSelectionTitleBuilder:
+            rangeSelectionTitleBuilder ?? this.rangeSelectionTitleBuilder,
       );
 
   static Widget buildDefaultDayOfWeek(BuildContext context, int index) =>
@@ -139,6 +183,35 @@ class CalendarParameters {
       ),
     );
   }
+
+  static Widget buildDefaultSingleSelectionTitle(
+          BuildContext context, DateTime selected) =>
+      ListTile(
+        title: Text(
+            selected == null
+                ? ''
+                : MaterialLocalizations.of(context).formatFullDate(selected),
+            overflow: TextOverflow.ellipsis),
+      );
+
+  static Widget buildDefaultMultiSelectionTitle(
+      BuildContext context, Set<DateTime> selected) {
+    final localizations = MaterialLocalizations.of(context);
+    final dates =
+        selected?.map((e) => localizations.formatMonthYear(e))?.join(', ');
+    return ListTile(
+        title: Text(dates?.isNotEmpty == true ? dates : '',
+            overflow: TextOverflow.ellipsis));
+  }
+
+  static Widget buildDefaultRangeSelectionTitle(
+      BuildContext context, DatesRange selected) {
+    final localizations = MaterialLocalizations.of(context);
+    return ListTile(
+        title: Text(localizations.formatMonthYear(selected.from) +
+            ' - ' +
+            localizations.formatMonthYear(selected.to)));
+  }
 }
 
 class CalendarContext extends StatelessWidget {
@@ -173,6 +246,12 @@ class CalendarContext extends StatelessWidget {
       horizontalSeparator: my.horizontalSeparator ?? def.horizontalSeparator,
       verticalSeparator: my.verticalSeparator ?? def.verticalSeparator,
       scrollDirection: my.scrollDirection ?? def.scrollDirection,
+      singleSelectionTitleBuilder:
+          my.singleSelectionTitleBuilder ?? def.singleSelectionTitleBuilder,
+      multiSelectionTitleBuilder:
+          my.multiSelectionTitleBuilder ?? def.multiSelectionTitleBuilder,
+      rangeSelectionTitleBuilder:
+          my.rangeSelectionTitleBuilder ?? def.rangeSelectionTitleBuilder,
     );
 
     return CalendarContextData(this, child, merged);
@@ -189,14 +268,6 @@ class CalendarContextData extends InheritedWidget {
   @override
   bool updateShouldNotify(CalendarContextData oldWidget) =>
       _widget.parameters != oldWidget._widget.parameters;
-}
-
-class DatesRange {
-  DatesRange(this.from, this.to)
-      : assert(from != null),
-        assert(to != null);
-  final DateTime from;
-  final DateTime to;
 }
 
 class _Calendar extends StatelessWidget {
@@ -505,7 +576,9 @@ abstract class CalendarWithSelectionState<TSelection>
   @override
   void didUpdateWidget(Calendar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selected != selected) setState(() {});
+    if (widget.selected != oldWidget.selected && widget.selected != selected) {
+      setState(() {});
+    }
   }
 
   @protected
@@ -668,4 +741,109 @@ class _SnapScrollPhysics extends ScrollPhysics {
 
   @override
   bool get allowImplicitScrolling => false;
+}
+
+class CalendarCombo<TSelection> extends StatefulWidget {
+  const CalendarCombo({
+    Key key,
+    this.displayDate,
+    this.onDisplayDateChanged,
+    this.columns = 1,
+    this.rows = 1,
+    this.popupSize = const Size.square(300),
+    this.selected,
+    this.onSelectedChanged,
+    this.openedChanged,
+    this.hoveredChanged,
+    this.onTap,
+  })  : assert(columns > 0),
+        assert(rows > 0),
+        assert(popupSize != null),
+        super(key: key);
+
+  final DateTime displayDate;
+  final ValueChanged<DateTime> onDisplayDateChanged;
+  final int columns;
+  final int rows;
+  final Size popupSize;
+  final TSelection selected;
+  final ValueChanged<TSelection> onSelectedChanged;
+  final ValueChanged<bool> openedChanged;
+  final ValueChanged<bool> hoveredChanged;
+  final GestureTapCallback onTap;
+
+  @override
+  CalendarComboState<TSelection> createState() =>
+      CalendarComboState<TSelection>(displayDate, selected);
+}
+
+class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
+  CalendarComboState(this._displayDate, this._selected);
+  final _comboKey = GlobalKey<ComboState>();
+  DateTime _displayDate;
+  TSelection _selected;
+
+  @override
+  void didUpdateWidget(CalendarCombo<TSelection> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if ((widget.displayDate != oldWidget.displayDate &&
+            widget.displayDate != _displayDate) ||
+        widget.columns != oldWidget.columns ||
+        widget.rows != oldWidget.rows ||
+        widget.popupSize != oldWidget.popupSize ||
+        (widget.selected != oldWidget.selected &&
+            widget.selected != _selected)) {
+      setState(() {});
+    }
+  }
+
+  void open() => _comboKey.currentState?.open();
+  void close() => _comboKey.currentState?.close();
+
+  @override
+  Widget build(BuildContext context) {
+    final data = CalendarContext.of(context);
+    final parameters = data?.parameters ?? CalendarParameters.defaultParameters;
+    final comboParameters = ComboContext.of(context)?.parameters ??
+        ComboParameters.defaultParameters;
+    final popupDecorator = comboParameters.popupDecoratorBuilder;
+    return Combo(
+      key: _comboKey,
+      child: parameters.selectionTitleBuilder(context, _selected),
+      popupBuilder: (context, mirrored) {
+        Widget calendar = SizedBox.fromSize(
+          size: widget.popupSize,
+          child: Calendar<TSelection>(
+            displayDate: _displayDate,
+            onDisplayDateChanged: (date) {
+              _displayDate = date;
+              if (widget.onDisplayDateChanged != null) {
+                widget.onDisplayDateChanged(date);
+              }
+            },
+            columns: widget.columns,
+            rows: widget.rows,
+            selected: _selected,
+            onSelectedChanged: (selected) {
+              _selected = selected;
+              if (widget.onSelectedChanged != null) {
+                widget.onSelectedChanged(selected);
+              }
+            },
+          ),
+        );
+        if (popupDecorator == null) {
+          calendar = Material(elevation: 4, child: calendar);
+        }
+
+        return data == null
+            ? calendar
+            : CalendarContext(parameters: parameters, child: calendar);
+      },
+      openedChanged: widget.openedChanged,
+      hoveredChanged: widget.hoveredChanged,
+      onTap: widget.onTap,
+    );
+  }
 }

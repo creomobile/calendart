@@ -6,7 +6,21 @@ import 'package:flutter/material.dart';
 
 enum DayType { extraLow, current, today, extraHigh }
 typedef DayBuilder = Widget Function(
-    BuildContext context, DateTime date, DayType type, int colunm, int row);
+    BuildContext context,
+    CalendarParameters parameters,
+    DateTime date,
+    DayType type,
+    int column,
+    int row);
+typedef SelectionBuilder = Widget Function(
+    BuildContext context,
+    CalendarParameters parameters,
+    DateTime date,
+    int column,
+    int row,
+    Widget day,
+    bool preselect,
+    bool Function(DateTime date) isSelected);
 typedef CalendarDecoratorBuilder = Widget Function(
     BuildContext context, DateTime displayDate, Widget calendar);
 
@@ -16,6 +30,7 @@ class CalendarParameters {
     this.showDaysOfWeek,
     this.dayOfWeekBuilder,
     this.dayBuilder,
+    this.selectionBuilder,
     this.decoratorBuilder,
     this.horizontalSeparator,
     this.verticalSeparator,
@@ -26,6 +41,7 @@ class CalendarParameters {
     showDaysOfWeek: true,
     dayOfWeekBuilder: buildDefaultDayOfWeek,
     dayBuilder: buildDefaultDay,
+    selectionBuilder: buildDefaultSelection,
     horizontalSeparator: PreferredSize(
         preferredSize: Size.fromWidth(32), child: SizedBox(width: 32)),
     verticalSeparator: PreferredSize(
@@ -37,6 +53,7 @@ class CalendarParameters {
   final bool showDaysOfWeek;
   final IndexedWidgetBuilder dayOfWeekBuilder;
   final DayBuilder dayBuilder;
+  final SelectionBuilder selectionBuilder;
   final CalendarDecoratorBuilder decoratorBuilder;
   final PreferredSizeWidget horizontalSeparator;
   final PreferredSizeWidget verticalSeparator;
@@ -47,6 +64,7 @@ class CalendarParameters {
     bool showDaysOfWeek,
     IndexedWidgetBuilder dayOfWeekBuilder,
     DayBuilder dayBuilder,
+    SelectionBuilder selectionBuilder,
     CalendarDecoratorBuilder decoratorBuilder,
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
@@ -57,6 +75,7 @@ class CalendarParameters {
         showDaysOfWeek: showDaysOfWeek ?? this.showDaysOfWeek,
         dayOfWeekBuilder: dayOfWeekBuilder ?? this.dayOfWeekBuilder,
         dayBuilder: dayBuilder ?? this.dayBuilder,
+        selectionBuilder: selectionBuilder ?? this.selectionBuilder,
         decoratorBuilder: decoratorBuilder ?? this.decoratorBuilder,
         horizontalSeparator: horizontalSeparator ?? this.horizontalSeparator,
         verticalSeparator: verticalSeparator ?? this.verticalSeparator,
@@ -68,8 +87,13 @@ class CalendarParameters {
           child: Text(MaterialLocalizations.of(context).narrowWeekdays[index],
               style: TextStyle(color: Colors.blueAccent)));
 
-  static Widget buildDefaultDay(BuildContext context, DateTime date,
-          DayType type, int column, int row) =>
+  static Widget buildDefaultDay(
+          BuildContext context,
+          CalendarParameters parameters,
+          DateTime date,
+          DayType type,
+          int column,
+          int row) =>
       Center(
           child: Text(
         date.day.toString(),
@@ -80,6 +104,41 @@ class CalendarParameters {
           decoration: type == DayType.today ? TextDecoration.underline : null,
         ),
       ));
+
+  static Widget buildDefaultSelection(
+      BuildContext context,
+      CalendarParameters parameters,
+      DateTime date,
+      int column,
+      int row,
+      Widget day,
+      bool preselect,
+      bool Function(DateTime date) isSelected,
+      {Color color = Colors.blueAccent}) {
+    if (!isSelected(date)) return day;
+    final leftSelected =
+        column != 0 && isSelected(date.subtract(const Duration(days: 1)));
+    final rightSelected = column != DateTime.daysPerWeek - 1 &&
+        isSelected(date.add(const Duration(days: 1)));
+    final topSelected = row != 0 &&
+        isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
+    final bottomSelected = row != 5 &&
+        isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
+    final opacityColor = preselect ? color.withOpacity(0.3) : color;
+    final borderSide = BorderSide(color: opacityColor);
+    return Container(
+      child: DefaultTextStyle(child: day, style: TextStyle(color: color)),
+      decoration: BoxDecoration(
+        color: opacityColor.withOpacity(0.1),
+        border: Border(
+          left: leftSelected ? BorderSide.none : borderSide,
+          right: rightSelected ? BorderSide.none : borderSide,
+          top: topSelected ? BorderSide.none : borderSide,
+          bottom: bottomSelected ? BorderSide.none : borderSide,
+        ),
+      ),
+    );
+  }
 }
 
 class CalendarContext extends StatelessWidget {
@@ -109,6 +168,7 @@ class CalendarContext extends StatelessWidget {
       showDaysOfWeek: my.showDaysOfWeek ?? def.showDaysOfWeek,
       dayOfWeekBuilder: my.dayOfWeekBuilder ?? def.dayOfWeekBuilder,
       dayBuilder: my.dayBuilder ?? def.dayBuilder,
+      selectionBuilder: my.selectionBuilder ?? def.selectionBuilder,
       decoratorBuilder: my.decoratorBuilder ?? def.decoratorBuilder,
       horizontalSeparator: my.horizontalSeparator ?? def.horizontalSeparator,
       verticalSeparator: my.verticalSeparator ?? def.verticalSeparator,
@@ -131,31 +191,35 @@ class CalendarContextData extends InheritedWidget {
       _widget.parameters != oldWidget._widget.parameters;
 }
 
+class DatesRange {
+  DatesRange(this.from, this.to)
+      : assert(from != null),
+        assert(to != null);
+  final DateTime from;
+  final DateTime to;
+}
+
 class _Calendar extends StatelessWidget {
   const _Calendar({
     Key key,
+    @required this.parameters,
     this.displayDate,
-    this.firstDayOfWeekIndex,
-    this.showDaysOfWeek = true,
-    @required this.dayOfWeekBuilder,
     @required this.dayBuilder,
-  })  : assert(showDaysOfWeek != null),
-        assert(dayOfWeekBuilder != null),
+  })  : assert(parameters != null),
         assert(dayBuilder != null),
         super(key: key);
 
+  final CalendarParameters parameters;
   final DateTime displayDate;
-  final int firstDayOfWeekIndex;
-  final bool showDaysOfWeek;
-  final IndexedWidgetBuilder dayOfWeekBuilder;
   final DayBuilder dayBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final firstDayOfWeekIndex = this.firstDayOfWeekIndex ??
+    final parameters = this.parameters;
+    final firstDayOfWeekIndex = parameters.firstDayOfWeekIndex ??
         MaterialLocalizations.of(context).firstDayOfWeekIndex ??
         0;
-    final daysOfWeekFactor = showDaysOfWeek ? 1 : 0;
+    final daysOfWeekFactor = parameters.showDaysOfWeek ? 1 : 0;
 
     DateTime getDate(DateTime date) =>
         DateTime(date.year, date.month, date.day);
@@ -186,7 +250,7 @@ class _Calendar extends StatelessWidget {
               ? date == today ? DayType.today : DayType.current
               : DayType.extraHigh;
 
-      return dayBuilder(context, date, type, column, row);
+      return dayBuilder(context, parameters, date, type, column, row);
     }
 
     return Column(
@@ -197,8 +261,8 @@ class _Calendar extends StatelessWidget {
                 children: Iterable.generate(DateTime.daysPerWeek)
                     .map(
                       (column) => Expanded(
-                          child: showDaysOfWeek && row == 0
-                              ? dayOfWeekBuilder(
+                          child: parameters.showDaysOfWeek && row == 0
+                              ? parameters.dayOfWeekBuilder(
                                   context,
                                   (column + firstDayOfWeekIndex) %
                                       DateTime.daysPerWeek)
@@ -213,30 +277,43 @@ class _Calendar extends StatelessWidget {
   }
 }
 
-class Calendar extends StatefulWidget {
+class Calendar<TSelection> extends StatefulWidget {
   const Calendar({
     Key key,
     this.displayDate,
-    this.dayBuilder = CalendarParameters.buildDefaultDay,
     this.onDisplayDateChanged,
     this.columns = 1,
     this.rows = 1,
-  })  : assert(dayBuilder != null),
-        assert(columns > 0),
+    this.selected,
+    this.onSelectedChanged,
+  })  : assert(columns > 0),
         assert(rows > 0),
         super(key: key);
 
   final DateTime displayDate;
-  final DayBuilder dayBuilder;
   final ValueChanged<DateTime> onDisplayDateChanged;
   final int columns;
   final int rows;
+  final TSelection selected;
+  final ValueChanged<TSelection> onSelectedChanged;
 
   @override
-  CalendarState createState() => CalendarState(displayDate);
+  CalendarState createState() {
+    if (TSelection != dynamic) {
+      if (TSelection == DateTime) {
+        return SingleSelectionCalendarState(displayDate, selected as DateTime);
+      } else if (const <DateTime>{} is TSelection) {
+        return MultiSelectionCalendarState(
+            displayDate, selected as Set<DateTime>);
+      } else if (TSelection == DatesRange) {
+        return RangeSelectionCalendarState(displayDate, selected as DatesRange);
+      }
+    }
+    return CalendarState(displayDate);
+  }
 }
 
-class CalendarState extends State<Calendar> {
+class CalendarState<TSelection> extends State<Calendar<TSelection>> {
   CalendarState(DateTime displayDate)
       : _displayDate = _getMonthDate(displayDate);
   static const _itemsBefore = 2;
@@ -299,6 +376,11 @@ class CalendarState extends State<Calendar> {
         monthCount ~/ DateTime.monthsPerYear, month == 0 ? 12 : month);
   }
 
+  @protected
+  Widget buildDay(BuildContext context, CalendarParameters parameters,
+          DateTime date, DayType type, int column, int row) =>
+      parameters.dayBuilder(context, parameters, date, type, column, row);
+
   @override
   Widget build(BuildContext context) {
     final parameters = CalendarContext.of(context)?.parameters ??
@@ -342,11 +424,9 @@ class CalendarState extends State<Calendar> {
             Widget build(int row, [int column = 0]) {
               final date = _getDate(row, column);
               Widget calendar = _Calendar(
+                parameters: parameters,
                 displayDate: date,
-                firstDayOfWeekIndex: parameters.firstDayOfWeekIndex,
-                showDaysOfWeek: parameters.showDaysOfWeek,
-                dayOfWeekBuilder: parameters.dayOfWeekBuilder,
-                dayBuilder: widget.dayBuilder,
+                dayBuilder: buildDay,
               );
               if (parameters.decoratorBuilder != null) {
                 calendar = parameters.decoratorBuilder(context, date, calendar);
@@ -413,6 +493,148 @@ class CalendarState extends State<Calendar> {
   }
 }
 
+abstract class CalendarWithSelectionState<TSelection>
+    extends CalendarState<TSelection> {
+  CalendarWithSelectionState(DateTime displayDate, this.selected)
+      : super(displayDate);
+  @protected
+  TSelection selected;
+  @protected
+  DateTime hovered;
+
+  @override
+  void didUpdateWidget(Calendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected != selected) setState(() {});
+  }
+
+  @protected
+  bool get preselect => false;
+  @protected
+  bool isSelected(DateTime date);
+  @protected
+  void onDayTap(DateTime date) {
+    if (widget.onSelectedChanged != null) {
+      widget.onSelectedChanged(selected);
+    }
+  }
+
+  @override
+  Widget buildDay(BuildContext context, CalendarParameters parameters,
+      DateTime date, DayType type, int column, int row) {
+    final day = super.buildDay(context, parameters, date, type, column, row);
+    final extraLow = type == DayType.extraLow;
+    final extraHigh = type == DayType.extraHigh;
+    final month = date.month +
+        (extraLow
+            ? date.month == 12 ? -11 : 1
+            : extraHigh ? date.month == 1 ? 11 : -1 : 0);
+    final selection = parameters.selectionBuilder(
+      context,
+      parameters,
+      date,
+      column,
+      row,
+      day,
+      preselect,
+      (e) => e.month == month && isSelected(e),
+    );
+    return extraLow || extraHigh
+        ? selection
+        : InkResponse(
+            child: selection,
+            onTap: () => setState(() => onDayTap(date)),
+            onHover: (hovered) {
+              if (hovered) setState(() => this.hovered = date);
+            },
+          );
+  }
+}
+
+class SingleSelectionCalendarState
+    extends CalendarWithSelectionState<DateTime> {
+  SingleSelectionCalendarState(DateTime displayDate, DateTime selected)
+      : super(displayDate, selected);
+
+  @override
+  bool isSelected(DateTime date) => date == selected;
+
+  @override
+  void onDayTap(DateTime date) {
+    selected = date;
+    super.onDayTap(date);
+  }
+}
+
+class MultiSelectionCalendarState
+    extends CalendarWithSelectionState<Set<DateTime>> {
+  MultiSelectionCalendarState(DateTime displayDate, Set<DateTime> selected)
+      : super(displayDate, selected);
+
+  @override
+  bool isSelected(DateTime date) => selected?.contains(date) == true;
+
+  @override
+  void onDayTap(DateTime date) {
+    (selected?.contains(date) == true
+        ? selected.remove
+        : (selected ??= {}).add)(date);
+    super.onDayTap(date);
+  }
+}
+
+class RangeSelectionCalendarState
+    extends CalendarWithSelectionState<DatesRange> {
+  RangeSelectionCalendarState(DateTime displayDate, DatesRange selected)
+      : _from = selected?.from,
+        _to = selected?.to,
+        super(displayDate, selected);
+  DateTime _from;
+  DateTime _to;
+
+  @override
+  bool get preselect => _from != null && _to == null;
+
+  @override
+  bool isSelected(DateTime date) {
+    if (_to == null && _from == null) return false;
+    DateTime from;
+    DateTime to;
+    if (_to == null) {
+      final hovered = this.hovered ?? _from;
+      final isBefore = hovered.isBefore(_from);
+      from = isBefore ? hovered : _from;
+      to = isBefore ? _from : hovered;
+    } else {
+      from = _from;
+      to = _to;
+    }
+    return !date.isBefore(from) && !date.isAfter(to);
+  }
+
+  @override
+  void onDayTap(DateTime date) {
+    if (preselect) {
+      if (date.isBefore(_from)) {
+        _to = _from;
+        _from = date;
+      } else {
+        _to = date;
+      }
+      selected = DatesRange(
+          _from,
+          _to
+              .add(const Duration(days: 1))
+              .subtract(const Duration(milliseconds: 1)));
+      super.onDayTap(date);
+    } else {
+      _from = date;
+      _to = null;
+      hovered = null;
+    }
+  }
+}
+
 class _SnapScrollPhysics extends ScrollPhysics {
   const _SnapScrollPhysics({ScrollPhysics parent, @required this.itemSize})
       : assert(itemSize > 0),
@@ -447,72 +669,3 @@ class _SnapScrollPhysics extends ScrollPhysics {
   @override
   bool get allowImplicitScrolling => false;
 }
-
-typedef SelectionBuilder = Widget Function(
-    BuildContext context, DateTime date, DayType type, int colunm, int row,
-    {@required Widget day,
-    @required bool Function(DateTime date) isSelected,
-    @required bool preselect});
-
-class SelectableCalendar<TSelection> extends StatefulWidget {
-  const SelectableCalendar({
-    Key key,
-    this.selected,
-    this.onSelectedChanged,
-    this.buildSelection = buildDefaultSelection,
-  }) : super(key: key);
-
-  final TSelection selected;
-  final ValueChanged<TSelection> onSelectedChanged;
-  final SelectionBuilder buildSelection;
-
-  @override
-  SelectableCalendarState createState() => SelectableCalendarState();
-
-  static Widget buildDefaultSelection(
-      BuildContext context, DateTime date, DayType type, int column, int row,
-      {@required Widget day,
-      @required bool Function(DateTime date) isSelected,
-      bool preselect = false,
-      Color color = Colors.blueAccent,
-      double opacity}) {
-    final selected = isSelected(date);
-    final leftSelected =
-        column != 0 && isSelected(date.subtract(const Duration(days: 1)));
-    final rightSelected = column != DateTime.daysPerWeek - 1 &&
-        isSelected(date.add(const Duration(days: 1)));
-    final topSelected = row != 0 &&
-        isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
-    final bottomSelected = row != 5 &&
-        isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
-
-    final opacityColor = color.withOpacity(opacity ?? preselect ? 0.3 : 1.0);
-    final borderSide = BorderSide(color: opacityColor);
-    return Container(
-      child: selected
-          ? DefaultTextStyle(child: day, style: TextStyle(color: color))
-          : day,
-      decoration: selected
-          ? BoxDecoration(
-              color: opacityColor.withOpacity(0.1),
-              border: Border(
-                left: leftSelected ? BorderSide.none : borderSide,
-                right: rightSelected ? BorderSide.none : borderSide,
-                top: topSelected ? BorderSide.none : borderSide,
-                bottom: bottomSelected ? BorderSide.none : borderSide,
-              ),
-            )
-          : null,
-    );
-  }
-}
-
-class SelectableCalendarState extends State<SelectableCalendar> {
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}
-
-typedef CalendarsDecoratorBuilder = Widget Function(BuildContext context,
-    bool mirrored, DateTime displayDate, Widget calendars);

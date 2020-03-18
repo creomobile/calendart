@@ -52,68 +52,6 @@ class _SimpleCalendarWithSingleSelectionState
   double _separatorWidth;
   double _separatorHeight;
 
-  DateTime _singleSelected;
-  final _multiSelected = <DateTime>{};
-  DateTime _rangeSelectedFrom;
-  DateTime _rangeSelectedTo;
-  DateTime _hovered;
-
-  bool _isSelected(SelectionType selectionType, DateTime date) {
-    switch (selectionType) {
-      case SelectionType.single:
-        return date == _singleSelected;
-      case SelectionType.multi:
-        return _multiSelected.contains(date);
-      case SelectionType.range:
-        if (_rangeSelectedFrom == null) return false;
-        DateTime from;
-        DateTime to;
-        if (_rangeSelectedTo == null) {
-          final hovered = _hovered ?? _rangeSelectedFrom;
-          final isBefore = hovered.isBefore(_rangeSelectedFrom);
-          from = isBefore ? hovered : _rangeSelectedFrom;
-          to = isBefore ? _rangeSelectedFrom : hovered;
-        } else {
-          from = _rangeSelectedFrom;
-          to = _rangeSelectedTo;
-        }
-        return !date.isBefore(from) && !date.isAfter(to);
-      default:
-        return false;
-    }
-  }
-
-  void _setSelected(SelectionType selectionType, DateTime date) {
-    switch (selectionType) {
-      case SelectionType.single:
-        if (_singleSelected != date) setState(() => _singleSelected = date);
-        break;
-      case SelectionType.multi:
-        setState(() => (_multiSelected.contains(date)
-            ? _multiSelected.remove
-            : _multiSelected.add)(date));
-        break;
-      case SelectionType.range:
-        setState(() {
-          if (_rangeSelectedFrom == null || _rangeSelectedTo != null) {
-            _rangeSelectedFrom = date;
-            _rangeSelectedTo = null;
-            _hovered = null;
-          } else {
-            if (date.isBefore(_rangeSelectedFrom)) {
-              _rangeSelectedTo = _rangeSelectedFrom;
-              _rangeSelectedFrom = date;
-            } else {
-              _rangeSelectedTo = date;
-            }
-          }
-        });
-        break;
-      default:
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) => ListView(
         padding: EdgeInsets.all(16),
@@ -146,53 +84,29 @@ class _SimpleCalendarWithSingleSelectionState
                     _separatorHeight = separatorHeight;
                     _calendarKey = GlobalKey<CalendarState>();
                   }
-
-                  return ConstrainedBox(
-                      constraints:
-                          BoxConstraints(maxWidth: width, maxHeight: height),
-                      child: Calendar(
+                  Calendar createCalendar<T>() => Calendar<T>(
                         key: _calendarKey,
                         displayDate: DateTime(
                             properties.year.value, properties.month.value),
                         columns: properties.columns.value,
                         rows: properties.rows.value,
-                        dayBuilder: (context, date, type, column, row) {
-                          final selectionType = properties.selectionType.value;
-                          final hoverMode =
-                              selectionType == SelectionType.range &&
-                                  _rangeSelectedFrom != null &&
-                                  _rangeSelectedTo == null;
-                          var day = CalendarParameters.buildDefaultDay(
-                              context, date, type, column, row);
-                          if (type != DayType.extraLow &&
-                              type != DayType.extraHigh) {
-                            day = SelectableCalendar.buildDefaultSelection(
-                                context, date, type, column, row,
-                                day: day,
-                                isSelected: (_) =>
-                                    _.month == date.month &&
-                                    _isSelected(selectionType, _),
-                                preselect: hoverMode);
-                          }
-
-                          return selectionType != SelectionType.none &&
-                                  (type == DayType.today ||
-                                      type == DayType.current)
-                              ? InkResponse(
-                                  child: day,
-                                  onTap: () =>
-                                      _setSelected(selectionType, date),
-                                  onHover: hoverMode
-                                      ? (hovered) {
-                                          if (hovered) {
-                                            setState(() => _hovered = date);
-                                          }
-                                        }
-                                      : null,
-                                )
-                              : day;
-                        },
-                      ));
+                      );
+                  return ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxWidth: width, maxHeight: height),
+                    child: () {
+                      switch (properties.selectionType.value) {
+                        case SelectionType.single:
+                          return createCalendar<DateTime>();
+                        case SelectionType.multi:
+                          return createCalendar<Set<DateTime>>();
+                        case SelectionType.range:
+                          return createCalendar<DatesRange>();
+                        default:
+                          return createCalendar();
+                      }
+                    }(),
+                  );
                 },
               ),
             ],

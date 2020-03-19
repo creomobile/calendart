@@ -39,43 +39,56 @@ class _HomePageState extends State<HomePage> {
                   selected: properties.selected is DateTime
                       ? properties.selected
                       : null,
-                  canSelectExtra: canSelectExtra)
+                  canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
+                )
               : CalendarSelections.single(
                   selected: properties.selected is DateTime
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
                   autoClosePopupAfterSelectionChanged:
-                      autoClosePopupAfterSelectionChanged);
+                      autoClosePopupAfterSelectionChanged,
+                );
         case SelectionType.multi:
           return autoClosePopupAfterSelectionChanged == null
               ? CalendarSelections.multi(
                   selected: properties.selected is Set<DateTime>
                       ? properties.selected
                       : null,
-                  canSelectExtra: canSelectExtra)
+                  canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
+                )
               : CalendarSelections.multi(
                   selected: properties.selected is Set<DateTime>
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
                   autoClosePopupAfterSelectionChanged:
-                      autoClosePopupAfterSelectionChanged);
+                      autoClosePopupAfterSelectionChanged,
+                );
         case SelectionType.range:
           return autoClosePopupAfterSelectionChanged == null
               ? CalendarSelections.range(
                   selected: properties.selected is DatesRange
                       ? properties.selected
                       : null,
-                  canSelectExtra: canSelectExtra)
+                  canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
+                )
               : CalendarSelections.range(
                   selected: properties.selected is DatesRange
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) => properties.selected = _,
                   autoClosePopupAfterSelectionChanged:
-                      autoClosePopupAfterSelectionChanged);
+                      autoClosePopupAfterSelectionChanged,
+                );
         default:
+          properties.selected = null;
           return autoClosePopupAfterSelectionChanged == null
               ? CalendarSelections.none(canSelectExtra: canSelectExtra)
               : CalendarSelections.none(
@@ -118,33 +131,21 @@ class _HomePageState extends State<HomePage> {
                     _separatorHeight = separatorHeight;
                     _calendarKey = GlobalKey<CalendarState>();
                   }
-                  Calendar createCalendar<T>() => Calendar<T>(
-                        key: _calendarKey,
-                        displayDate: DateTime(
-                            properties.year.value, properties.month.value),
-                        columns: properties.columns.value,
-                        rows: properties.rows.value,
-                        selection: getSelection(properties),
-                        onDisplayDateChanged: (date) {
-                          properties.year.value = date.year;
-                          properties.month.value = date.month;
-                        },
-                      );
                   return ConstrainedBox(
                     constraints:
                         BoxConstraints(maxWidth: width, maxHeight: height),
-                    child: () {
-                      switch (properties.selectionType.value) {
-                        case SelectionType.single:
-                          return createCalendar<DateTime>();
-                        case SelectionType.multi:
-                          return createCalendar<Set<DateTime>>();
-                        case SelectionType.range:
-                          return createCalendar<DatesRange>();
-                        default:
-                          return createCalendar();
-                      }
-                    }(),
+                    child: Calendar(
+                      key: _calendarKey,
+                      displayDate: DateTime(
+                          properties.year.value, properties.month.value),
+                      columns: properties.columns.value,
+                      rows: properties.rows.value,
+                      selection: getSelection(properties),
+                      onDisplayDateChanged: (date) {
+                        properties.year.value = date.year;
+                        properties.month.value = date.month;
+                      },
+                    ),
                   );
                 },
               ),
@@ -164,40 +165,24 @@ class _HomePageState extends State<HomePage> {
                           (properties.height.value.toDouble() +
                               separatorHeight) -
                       separatorHeight;
-                  Widget createCombo<T>() => ComboContext(
-                        parameters: ComboParameters(),
-                        child: CalendarCombo<T>(
-                          key: _comboKey,
-                          displayDate: DateTime(
-                              properties.year.value, properties.month.value),
-                          columns: properties.columns.value,
-                          rows: properties.rows.value,
-                          selection: getSelection(properties),
-                          placeholder: const ListTile(
-                              title: Text('Calendar Combo',
-                                  style: TextStyle(color: Colors.grey))),
-                          popupSize: Size(width, height),
-                          onDisplayDateChanged: (date) {
-                            properties.year.value = date.year;
-                            properties.month.value = date.month;
-                          },
-                          onSelectedChanged: (e) => properties.selected = e,
-                        ),
-                      );
                   return ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: 300),
-                    child: () {
-                      switch (properties.selectionType.value) {
-                        case SelectionType.single:
-                          return createCombo<DateTime>();
-                        case SelectionType.multi:
-                          return createCombo<Set<DateTime>>();
-                        case SelectionType.range:
-                          return createCombo<DatesRange>();
-                        default:
-                          return createCombo();
-                      }
-                    }(),
+                    child: CalendarCombo(
+                      key: _comboKey,
+                      displayDate: DateTime(
+                          properties.year.value, properties.month.value),
+                      columns: properties.columns.value,
+                      rows: properties.rows.value,
+                      selection: getSelection(properties),
+                      placeholder: const ListTile(
+                          title: Text('Calendar Combo',
+                              style: TextStyle(color: Colors.grey))),
+                      popupSize: Size(width, height),
+                      onDisplayDateChanged: (date) {
+                        properties.year.value = date.year;
+                        properties.month.value = date.month;
+                      },
+                    ),
                   );
                 },
               ),

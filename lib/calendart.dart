@@ -1,4 +1,4 @@
-library multicalendar;
+library calendart;
 
 import 'dart:ui';
 
@@ -302,7 +302,7 @@ abstract class CalendarSelectionBase {
   }
 
   @protected
-  bool isSelected(DateTime date);
+  bool isSelected(DateTime date, DayType type, int column, int row);
 
   bool get hasSelection;
 }
@@ -326,7 +326,7 @@ class CalendarNoneSelection extends CalendarSelectionBase {
       onDayTap != null && super.canSelect(date, type, column, row);
 
   @override
-  bool isSelected(DateTime date) => false;
+  bool isSelected(DateTime date, DayType type, int column, int row) => false;
 
   @override
   bool get hasSelection => false;
@@ -348,6 +348,9 @@ abstract class CalendarSelection<T> extends CalendarSelectionBase {
           autoClosePopupAfterSelectionChanged:
               autoClosePopupAfterSelectionChanged,
         );
+  final _listeners = <ValueChanged<T>>[];
+  void addListener(ValueChanged<T> listener) => _listeners.add(listener);
+  void removeListener(ValueChanged<T> listener) => _listeners.remove(listener);
 
   T _selected;
   T get selected => _selected;
@@ -356,6 +359,7 @@ abstract class CalendarSelection<T> extends CalendarSelectionBase {
     if (onSelectedChanged != null) {
       onSelectedChanged(selected);
     }
+    _listeners.forEach((e) => e(value));
   }
 
   final ValueChanged<T> onSelectedChanged;
@@ -390,7 +394,8 @@ class CalendarSingleSelection extends CalendarSelection<DateTime> {
         );
 
   @override
-  bool isSelected(DateTime date) => date == selected;
+  bool isSelected(DateTime date, DayType type, int column, int row) =>
+      canSelect(date, type, column, row) && date == selected;
 
   @override
   void select(DateTime date) {
@@ -418,12 +423,13 @@ class CalendarMultiSelection extends CalendarSelection<Set<DateTime>> {
         );
 
   @override
-  bool isSelected(DateTime date) => selected?.contains(date) == true;
+  bool isSelected(DateTime date, DayType type, int column, int row) =>
+      canSelect(date, type, column, row) && selected?.contains(date) == true;
 
   @override
   void select(DateTime date) {
     final selected = this.selected ?? {};
-    (isSelected(date) ? selected.remove : selected.add)(date);
+    (selected?.contains(date) == true ? selected.remove : selected.add)(date);
     this.selected = selected;
     super.select(date);
   }
@@ -447,7 +453,9 @@ class CalendarRangeSelection extends CalendarSelection<DatesRange> {
     bool canSelectExtra = false,
     ValueSetter<DateTime> onDayTap,
     bool autoClosePopupAfterSelectionChanged = true,
-  }) : super(
+  })  : _from = selected?.from,
+        _to = selected?.to,
+        super(
           selected: selected,
           onSelectedChanged: onSelectedChanged,
           canSelectExtra: canSelectExtra,
@@ -463,8 +471,10 @@ class CalendarRangeSelection extends CalendarSelection<DatesRange> {
   bool get preselect => _from != null && _to == null;
 
   @override
-  bool isSelected(DateTime date) {
-    if (_to == null && _from == null) return false;
+  bool isSelected(DateTime date, DayType type, int column, int row) {
+    if (!canSelect(date, type, column, row) || (_to == null && _from == null)) {
+      return false;
+    }
     DateTime from;
     DateTime to;
     if (_to == null) {
@@ -489,13 +499,13 @@ class CalendarRangeSelection extends CalendarSelection<DatesRange> {
         _to = date;
       }
       selected = DatesRange(
-          _from, DateTime(_to.year, _to.month, _to.day, 23, 59, 59, 999));
-      super.onDayTap(date);
+          _from, DateTime.utc(_to.year, _to.month, _to.day, 23, 59, 59, 999));
     } else {
       _from = date;
       _to = null;
       hovered = null;
     }
+    super.select(date);
   }
 }
 
@@ -590,13 +600,13 @@ class _Calendar extends StatelessWidget {
     final daysOfWeekFactor = parameters.showDaysOfWeek ? 1 : 0;
 
     DateTime getDate(DateTime date) =>
-        DateTime(date.year, date.month, date.day);
+        DateTime.utc(date.year, date.month, date.day);
 
     final today = getDate(DateTime.now());
     final date = this.displayDate ?? today;
-    final displayDate = DateTime(date.year, date.month);
+    final displayDate = DateTime.utc(date.year, date.month);
 
-    var firstDate = DateTime(displayDate.year, displayDate.month, 1);
+    var firstDate = DateTime.utc(displayDate.year, displayDate.month, 1);
     final shift =
         (firstDate.weekday == DateTime.sunday ? 0 : firstDate.weekday) -
             firstDayOfWeekIndex;
@@ -604,7 +614,7 @@ class _Calendar extends StatelessWidget {
         Duration(days: shift < 0 ? shift + DateTime.daysPerWeek : shift));
     if (firstDate.month == 2 &&
         firstDate.day == 1 &&
-        DateTime(firstDate.year, 3, 1).difference(firstDate).inDays == 28) {
+        DateTime.utc(firstDate.year, 3, 1).difference(firstDate).inDays == 28) {
       firstDate =
           firstDate.subtract(const Duration(days: DateTime.daysPerWeek));
     }
@@ -645,17 +655,61 @@ class _Calendar extends StatelessWidget {
   }
 }
 
-class Calendar<TSelection> extends StatefulWidget {
+abstract class _Selectable implements StatefulWidget {
+  CalendarSelectionBase get selection;
+}
+
+mixin _SelectionListenerMixin<T extends _Selectable> on State<T> {
+  @override
+  void initState() {
+    super.initState();
+    subscribe();
+  }
+
+  @override
+  void didUpdateWidget(_Selectable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selection != oldWidget.selection) {
+      unsubscribe(oldWidget);
+      subscribe();
+    }
+  }
+
+  @protected
+  void subscribe() {
+    if (widget.selection is CalendarSelection) {
+      (widget.selection as CalendarSelection).addListener(didSelectionChanged);
+    }
+  }
+
+  @protected
+  void unsubscribe(_Selectable widget) {
+    if (widget.selection is CalendarSelection) {
+      (widget.selection as CalendarSelection)
+          .removeListener(didSelectionChanged);
+    }
+  }
+
+  @protected
+  void didSelectionChanged(_) {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(widget);
+    super.dispose();
+  }
+}
+
+class Calendar extends StatefulWidget implements _Selectable {
   const Calendar({
     Key key,
     this.displayDate,
     this.onDisplayDateChanged,
     this.columns = 1,
     this.rows = 1,
-    this.selected,
     this.selection = const CalendarNoneSelection(),
-    this.onSelectedChanged,
-    this.onDayTap,
   })  : assert(columns > 0),
         assert(rows > 0),
         assert(selection != null),
@@ -665,28 +719,14 @@ class Calendar<TSelection> extends StatefulWidget {
   final ValueChanged<DateTime> onDisplayDateChanged;
   final int columns;
   final int rows;
-  final TSelection selected;
+  @override
   final CalendarSelectionBase selection;
-  final ValueChanged<TSelection> onSelectedChanged;
-  final ValueSetter<DateTime> onDayTap;
 
   @override
-  CalendarState createState() {
-    if (TSelection != dynamic) {
-      if (TSelection == DateTime) {
-        return SingleSelectionCalendarState(displayDate, selected as DateTime);
-      } else if (const <DateTime>{} is TSelection) {
-        return MultiSelectionCalendarState(
-            displayDate, selected as Set<DateTime>);
-      } else if (TSelection == DatesRange) {
-        return RangeSelectionCalendarState(displayDate, selected as DatesRange);
-      }
-    }
-    return CalendarState(displayDate);
-  }
+  CalendarState createState() => CalendarState(displayDate);
 }
 
-class CalendarState<TSelection> extends State<Calendar<TSelection>> {
+class CalendarState extends State<Calendar> with _SelectionListenerMixin {
   CalendarState(DateTime displayDate)
       : _displayDate = _getMonthDate(displayDate);
   static const _itemsBefore = 2;
@@ -702,7 +742,7 @@ class CalendarState<TSelection> extends State<Calendar<TSelection>> {
 
   static DateTime _getMonthDate(DateTime date) {
     final d = date ?? DateTime.now();
-    return DateTime(d.year, d.month);
+    return DateTime.utc(d.year, d.month);
   }
 
   @override
@@ -745,20 +785,59 @@ class CalendarState<TSelection> extends State<Calendar<TSelection>> {
         row * crossFactor +
         column;
     final month = (monthCount + 1) % DateTime.monthsPerYear;
-    return DateTime(
+    return DateTime.utc(
         monthCount ~/ DateTime.monthsPerYear, month == 0 ? 12 : month);
   }
 
   @protected
   Widget buildDay(BuildContext context, CalendarParameters parameters,
       DateTime date, DayType type, int column, int row) {
-    final day =
+    final selection = widget.selection;
+    final modifiableSelection =
+        selection is CalendarSelection ? selection : null;
+    var day =
         parameters.dayBuilder(context, parameters, date, type, column, row);
-    return widget.onDayTap == null ||
-            type == DayType.extraLow ||
-            type == DayType.extraHigh
-        ? day
-        : InkResponse(child: day, onTap: () => widget.onDayTap(date));
+    final month = date.month +
+        (type == DayType.extraLow
+            ? date.month == 12 ? -11 : 1
+            : type == DayType.extraHigh ? date.month == 1 ? 11 : -1 : 0);
+    if (!(selection is CalendarNoneSelection)) {
+      day = parameters.selectionBuilder(
+        context,
+        parameters,
+        date,
+        column,
+        row,
+        day,
+        modifiableSelection?.preselect == true,
+        (e) =>
+            modifiableSelection?.isSelected(
+                e,
+                // today is not provided to avoid DateTime.now() calls
+                e.month == month
+                    ? DayType.current
+                    : (e.month == 1 && month == 12) || e.month < month
+                        ? DayType.extraLow
+                        : DayType.extraHigh,
+                column,
+                row) ==
+            true,
+      );
+    }
+
+    return selection.canSelect(date, type, column, row)
+        ? InkResponse(
+            child: day,
+            onTap: () => setState(() => selection.select(date)),
+            onHover: modifiableSelection == null
+                ? null
+                : (hovered) {
+                    if (hovered) {
+                      setState(() => modifiableSelection.hovered = date);
+                    }
+                  },
+          )
+        : day;
   }
 
   @override
@@ -873,150 +952,6 @@ class CalendarState<TSelection> extends State<Calendar<TSelection>> {
   }
 }
 
-abstract class CalendarWithSelectionState<TSelection>
-    extends CalendarState<TSelection> {
-  CalendarWithSelectionState(DateTime displayDate, this.selected)
-      : super(displayDate);
-  @protected
-  TSelection selected;
-  @protected
-  DateTime hovered;
-
-  @override
-  void didUpdateWidget(Calendar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.selected != oldWidget.selected && widget.selected != selected) {
-      setState(() {});
-    }
-  }
-
-  @protected
-  bool get preselect => false;
-  @protected
-  bool isSelected(DateTime date);
-  @protected
-  void onDayTap(DateTime date) {
-    if (widget.onSelectedChanged != null) {
-      widget.onSelectedChanged(selected);
-    }
-  }
-
-  @override
-  Widget buildDay(BuildContext context, CalendarParameters parameters,
-      DateTime date, DayType type, int column, int row) {
-    final day = super.buildDay(context, parameters, date, type, column, row);
-    final extraLow = type == DayType.extraLow;
-    final extraHigh = type == DayType.extraHigh;
-    final month = date.month +
-        (extraLow
-            ? date.month == 12 ? -11 : 1
-            : extraHigh ? date.month == 1 ? 11 : -1 : 0);
-    final selection = parameters.selectionBuilder(
-      context,
-      parameters,
-      date,
-      column,
-      row,
-      day,
-      preselect,
-      (e) => e.month == month && isSelected(e),
-    );
-    return extraLow || extraHigh
-        ? selection
-        : InkResponse(
-            child: selection,
-            onTap: () => setState(() => onDayTap(date)),
-            onHover: (hovered) {
-              if (hovered) setState(() => this.hovered = date);
-            },
-          );
-  }
-}
-
-class SingleSelectionCalendarState
-    extends CalendarWithSelectionState<DateTime> {
-  SingleSelectionCalendarState(DateTime displayDate, DateTime selected)
-      : super(displayDate, selected);
-
-  @override
-  bool isSelected(DateTime date) => date == selected;
-
-  @override
-  void onDayTap(DateTime date) {
-    selected = date;
-    super.onDayTap(date);
-  }
-}
-
-class MultiSelectionCalendarState
-    extends CalendarWithSelectionState<Set<DateTime>> {
-  MultiSelectionCalendarState(DateTime displayDate, Set<DateTime> selected)
-      : super(displayDate, selected);
-
-  @override
-  bool isSelected(DateTime date) => selected?.contains(date) == true;
-
-  @override
-  void onDayTap(DateTime date) {
-    (selected?.contains(date) == true
-        ? selected.remove
-        : (selected ??= {}).add)(date);
-    super.onDayTap(date);
-  }
-}
-
-class RangeSelectionCalendarState
-    extends CalendarWithSelectionState<DatesRange> {
-  RangeSelectionCalendarState(DateTime displayDate, DatesRange selected)
-      : _from = selected?.from,
-        _to = selected?.to,
-        super(displayDate, selected);
-  DateTime _from;
-  DateTime _to;
-
-  @override
-  bool get preselect => _from != null && _to == null;
-
-  @override
-  bool isSelected(DateTime date) {
-    if (_to == null && _from == null) return false;
-    DateTime from;
-    DateTime to;
-    if (_to == null) {
-      final hovered = this.hovered ?? _from;
-      final isBefore = hovered.isBefore(_from);
-      from = isBefore ? hovered : _from;
-      to = isBefore ? _from : hovered;
-    } else {
-      from = _from;
-      to = _to;
-    }
-    return !date.isBefore(from) && !date.isAfter(to);
-  }
-
-  @override
-  void onDayTap(DateTime date) {
-    if (preselect) {
-      if (date.isBefore(_from)) {
-        _to = _from;
-        _from = date;
-      } else {
-        _to = date;
-      }
-      selected = DatesRange(
-          _from,
-          _to
-              .add(const Duration(days: 1))
-              .subtract(const Duration(milliseconds: 1)));
-      super.onDayTap(date);
-    } else {
-      _from = date;
-      _to = null;
-      hovered = null;
-    }
-  }
-}
-
 class _SnapScrollPhysics extends ScrollPhysics {
   const _SnapScrollPhysics({ScrollPhysics parent, @required this.itemSize})
       : assert(itemSize > 0),
@@ -1052,7 +987,7 @@ class _SnapScrollPhysics extends ScrollPhysics {
   bool get allowImplicitScrolling => false;
 }
 
-class CalendarCombo<TSelection> extends StatefulWidget {
+class CalendarCombo extends StatefulWidget implements _Selectable {
   const CalendarCombo({
     Key key,
     this.displayDate,
@@ -1061,10 +996,7 @@ class CalendarCombo<TSelection> extends StatefulWidget {
     this.rows = 1,
     this.placeholder,
     this.popupSize = const Size.square(300),
-    this.selected,
     this.selection = const CalendarNoneSelection(),
-    this.onSelectedChanged,
-    this.onDayTap,
     this.openedChanged,
     this.hoveredChanged,
     this.onTap,
@@ -1080,53 +1012,46 @@ class CalendarCombo<TSelection> extends StatefulWidget {
   final int rows;
   final Widget placeholder;
   final Size popupSize;
-  final TSelection selected;
+  @override
   final CalendarSelectionBase selection;
-  final ValueChanged<TSelection> onSelectedChanged;
-  final ValueSetter<DateTime> onDayTap;
   final ValueChanged<bool> openedChanged;
   final ValueChanged<bool> hoveredChanged;
   final GestureTapCallback onTap;
 
   @override
-  CalendarComboState<TSelection> createState() =>
-      CalendarComboState<TSelection>(displayDate, selected);
+  CalendarComboState createState() => CalendarComboState(displayDate);
 }
 
-class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
-  CalendarComboState(this._displayDate, this._selected);
+class CalendarComboState<TSelection> extends State<CalendarCombo>
+    with _SelectionListenerMixin {
+  CalendarComboState(this._displayDate);
   final _comboKey = GlobalKey<ComboState>();
   final _calendarKey = GlobalKey<CalendarState>();
   DateTime _displayDate;
-  TSelection _selected;
 
   @override
-  void didUpdateWidget(CalendarCombo<TSelection> oldWidget) {
+  void didUpdateWidget(CalendarCombo oldWidget) {
     super.didUpdateWidget(oldWidget);
     if ((widget.displayDate != oldWidget.displayDate &&
             widget.displayDate != _displayDate) ||
         widget.columns != oldWidget.columns ||
         widget.rows != oldWidget.rows ||
-        widget.popupSize != oldWidget.popupSize ||
-        (widget.selected != oldWidget.selected &&
-            widget.selected != _selected)) {
-      setState(() {
-        _displayDate = widget.displayDate;
-        _selected = widget.selected;
-      });
+        widget.popupSize != oldWidget.popupSize) {
+      setState(() => _displayDate = widget.displayDate);
     }
   }
 
   void open() => _comboKey.currentState?.open();
   void close() => _comboKey.currentState?.close();
+
   void inc() => _calendarKey.currentState.inc();
   void dec() => _calendarKey.currentState.dec();
 
-  bool _hasSelection() =>
-      _selected != null &&
-      (_selected is Set<DateTime>
-          ? (_selected as Set<DateTime>).isNotEmpty
-          : true);
+  @override
+  void didSelectionChanged(_) {
+    super.didSelectionChanged(_);
+    if (widget.selection.autoClosePopupAfterSelectionChanged) close();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1135,16 +1060,18 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
     final comboParameters = ComboContext.of(context)?.parameters ??
         ComboParameters.defaultParameters;
     final popupDecorator = comboParameters.popupDecoratorBuilder;
+    final selection = widget.selection;
 
     return Combo(
       key: _comboKey,
-      child: _hasSelection()
-          ? parameters.selectionTitleBuilder(context, parameters, _selected)
+      child: widget.selection.hasSelection
+          ? parameters.selectionTitleBuilder(
+              context, parameters, (selection as CalendarSelection).selected)
           : (widget.placeholder ?? ListTile()),
       popupBuilder: (context, mirrored) {
         Widget calendar = SizedBox.fromSize(
           size: widget.popupSize,
-          child: Calendar<TSelection>(
+          child: Calendar(
             key: _calendarKey,
             displayDate: _displayDate,
             onDisplayDateChanged: (date) {
@@ -1155,18 +1082,10 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
             },
             columns: widget.columns,
             rows: widget.rows,
-            selected: _selected,
-            selection: widget.selection,
-            onSelectedChanged: (selected) {
-              setState(() => _selected = selected);
-              if (TSelection == DateTime) close();
-              if (widget.onSelectedChanged != null) {
-                widget.onSelectedChanged(selected);
-              }
-            },
-            onDayTap: widget.onDayTap,
+            selection: selection,
           ),
         );
+
         if (popupDecorator == null) {
           calendar = Material(elevation: 4, child: calendar);
         }

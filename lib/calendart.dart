@@ -359,6 +359,7 @@ class Calendar<TSelection> extends StatefulWidget {
     this.rows = 1,
     this.selected,
     this.onSelectedChanged,
+    this.onDayTap,
   })  : assert(columns > 0),
         assert(rows > 0),
         super(key: key);
@@ -369,6 +370,7 @@ class Calendar<TSelection> extends StatefulWidget {
   final int rows;
   final TSelection selected;
   final ValueChanged<TSelection> onSelectedChanged;
+  final ValueSetter<DateTime> onDayTap;
 
   @override
   CalendarState createState() {
@@ -409,8 +411,8 @@ class CalendarState<TSelection> extends State<Calendar<TSelection>> {
   void didUpdateWidget(Calendar oldWidget) {
     super.didUpdateWidget(oldWidget);
     final displayDate = _getMonthDate(widget.displayDate);
-    if ((_getMonthDate(oldWidget.displayDate) != displayDate &&
-            _displayDate != displayDate) ||
+    if ((displayDate != _getMonthDate(oldWidget.displayDate) &&
+            displayDate != _displayDate) ||
         (CalendarContext.of(context)?.parameters ??
                     CalendarParameters.defaultParameters)
                 .scrollDirection !=
@@ -451,8 +453,15 @@ class CalendarState<TSelection> extends State<Calendar<TSelection>> {
 
   @protected
   Widget buildDay(BuildContext context, CalendarParameters parameters,
-          DateTime date, DayType type, int column, int row) =>
-      parameters.dayBuilder(context, parameters, date, type, column, row);
+      DateTime date, DayType type, int column, int row) {
+    final day =
+        parameters.dayBuilder(context, parameters, date, type, column, row);
+    return widget.onDayTap == null ||
+            type == DayType.extraLow ||
+            type == DayType.extraHigh
+        ? day
+        : InkResponse(child: day, onTap: () => widget.onDayTap(date));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -752,9 +761,11 @@ class CalendarCombo<TSelection> extends StatefulWidget {
     this.onDisplayDateChanged,
     this.columns = 1,
     this.rows = 1,
+    this.placeholder,
     this.popupSize = const Size.square(300),
     this.selected,
     this.onSelectedChanged,
+    this.onDayTap,
     this.openedChanged,
     this.hoveredChanged,
     this.onTap,
@@ -767,9 +778,11 @@ class CalendarCombo<TSelection> extends StatefulWidget {
   final ValueChanged<DateTime> onDisplayDateChanged;
   final int columns;
   final int rows;
+  final Widget placeholder;
   final Size popupSize;
   final TSelection selected;
   final ValueChanged<TSelection> onSelectedChanged;
+  final ValueSetter<DateTime> onDayTap;
   final ValueChanged<bool> openedChanged;
   final ValueChanged<bool> hoveredChanged;
   final GestureTapCallback onTap;
@@ -782,13 +795,13 @@ class CalendarCombo<TSelection> extends StatefulWidget {
 class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
   CalendarComboState(this._displayDate, this._selected);
   final _comboKey = GlobalKey<ComboState>();
+  final _calendarKey = GlobalKey<CalendarState>();
   DateTime _displayDate;
   TSelection _selected;
 
   @override
   void didUpdateWidget(CalendarCombo<TSelection> oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     if ((widget.displayDate != oldWidget.displayDate &&
             widget.displayDate != _displayDate) ||
         widget.columns != oldWidget.columns ||
@@ -796,12 +809,23 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
         widget.popupSize != oldWidget.popupSize ||
         (widget.selected != oldWidget.selected &&
             widget.selected != _selected)) {
-      setState(() {});
+      setState(() {
+        _displayDate = widget.displayDate;
+        _selected = widget.selected;
+      });
     }
   }
 
   void open() => _comboKey.currentState?.open();
   void close() => _comboKey.currentState?.close();
+  void inc() => _calendarKey.currentState.inc();
+  void dec() => _calendarKey.currentState.dec();
+
+  bool _hasSelection() =>
+      _selected != null &&
+      (_selected is Set<DateTime>
+          ? (_selected as Set<DateTime>).isNotEmpty
+          : true);
 
   @override
   Widget build(BuildContext context) {
@@ -810,13 +834,17 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
     final comboParameters = ComboContext.of(context)?.parameters ??
         ComboParameters.defaultParameters;
     final popupDecorator = comboParameters.popupDecoratorBuilder;
+
     return Combo(
       key: _comboKey,
-      child: parameters.selectionTitleBuilder(context, _selected),
+      child: _hasSelection()
+          ? parameters.selectionTitleBuilder(context, _selected)
+          : (widget.placeholder ?? ListTile()),
       popupBuilder: (context, mirrored) {
         Widget calendar = SizedBox.fromSize(
           size: widget.popupSize,
           child: Calendar<TSelection>(
+            key: _calendarKey,
             displayDate: _displayDate,
             onDisplayDateChanged: (date) {
               _displayDate = date;
@@ -834,6 +862,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
                 widget.onSelectedChanged(selected);
               }
             },
+            onDayTap: widget.onDayTap,
           ),
         );
         if (popupDecorator == null) {

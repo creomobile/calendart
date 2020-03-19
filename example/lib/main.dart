@@ -18,8 +18,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _calendarProperties = CalendarProperties();
-  final _comboProperties = CalendarProperties();
+  final _comboProperties = CalendarComboProperties();
   GlobalKey<CalendarState> _calendarKey;
+  final _comboKey = GlobalKey<CalendarComboState>();
   double _width;
   double _height;
   double _separatorWidth;
@@ -91,7 +92,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
                 DemoItem<CalendarProperties>(
-                  properties: _calendarProperties,
+                  comboKey: _comboKey,
+                  properties: _comboProperties,
                   childBuilder: (properties) {
                     final separatorWidth =
                         properties.separatorWidth.value?.toDouble() ?? 0.0;
@@ -106,38 +108,16 @@ class _HomePageState extends State<HomePage> {
                                 separatorHeight) -
                         separatorHeight;
                     Widget createCombo<T>() => ComboContext(
-                          parameters: ComboParameters(
-                            childDecoratorBuilder: (child) => properties
-                                        .selected ==
-                                    null
-                                ? Stack(
-                                    children: [
-                                      child,
-                                      Positioned.fill(
-                                        child: IgnorePointer(
-                                          child: Row(
-                                            children: [
-                                              const Expanded(
-                                                  child: Text(
-                                                'Calendar Combo',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                    color: Colors.grey),
-                                              )),
-                                              const Icon(Icons.arrow_drop_down),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : child,
-                          ),
+                          parameters: ComboParameters(),
                           child: CalendarCombo<T>(
+                            key: _comboKey,
                             displayDate: DateTime(
                                 properties.year.value, properties.month.value),
                             columns: properties.columns.value,
                             rows: properties.rows.value,
+                            placeholder: const ListTile(
+                                title: Text('Calendar Combo',
+                                    style: TextStyle(color: Colors.grey))),
                             popupSize: Size(width, height),
                             onDisplayDateChanged: (date) {
                               properties.year.value = date.year;
@@ -176,15 +156,22 @@ class DemoItem<TProperties extends CalendarProperties>
     extends DemoItemBase<TProperties> {
   const DemoItem({
     Key key,
+    this.comboKey,
     @required TProperties properties,
     @required ChildBuilder<TProperties> childBuilder,
   }) : super(key: key, properties: properties, childBuilder: childBuilder);
+
+  final GlobalKey<CalendarComboState> comboKey;
+
   @override
   _DemoItemState<TProperties> createState() => _DemoItemState<TProperties>();
 }
 
 class _DemoItemState<TProperties extends CalendarProperties>
     extends DemoItemStateBase<TProperties> {
+  @override
+  DemoItem<TProperties> get widget => super.widget;
+
   PreferredSizeWidget _buildHorizontalSeparator(double width, bool custom) {
     final size = Size.fromWidth(width);
     return PreferredSize(
@@ -241,13 +228,82 @@ class _DemoItemState<TProperties extends CalendarProperties>
     );
   }
 
+  Widget _buildChildDecoration(BuildContext context, ComboParameters parameters,
+          bool opened, Widget child) =>
+      Container(
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.blueAccent),
+          borderRadius: BorderRadius.circular(16),
+        ),
+      );
+  Widget _buildPopupDecoration(
+          BuildContext context, ComboParameters parameters, Widget child) =>
+      Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blueAccent),
+            gradient: LinearGradient(colors: [
+              Colors.blueAccent.withOpacity(0.1),
+              Colors.blueAccent.withOpacity(0.0),
+              Colors.blueAccent.withOpacity(0.1),
+            ]),
+          ),
+          child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: Theme(
+                  data: ThemeData(
+                    highlightColor: Colors.blueAccent.withOpacity(0.1),
+                    splashColor: Colors.blueAccent.withOpacity(0.3),
+                  ),
+                  child: Stack(
+                    children: [
+                      child,
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.arrow_left),
+                                color: Colors.white,
+                                onPressed: () =>
+                                    widget.comboKey.currentState.dec(),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.arrow_right),
+                                color: Colors.white,
+                                onPressed: () =>
+                                    widget.comboKey.currentState.inc(),
+                              ),
+                            ]),
+                      ),
+                    ],
+                  ))),
+        ),
+      );
+
   @override
   Widget buildChild() {
     final properties = widget.properties;
+    final comboProperties = widget.properties is CalendarComboProperties
+        ? widget.properties as CalendarComboProperties
+        : null;
     final separatorWidth = properties.separatorWidth.value?.toDouble() ?? 0.0;
     final separatorHeight = properties.separatorHeight.value?.toDouble() ?? 0.0;
-
-    return CalendarContext(
+    final calendarContext = CalendarContext(
         parameters: CalendarParameters(
           firstDayOfWeekIndex: properties.firstDayOfWeekIndex.value,
           showDaysOfWeek: properties.showDaysOfWeek.value,
@@ -288,18 +344,74 @@ class _DemoItemState<TProperties extends CalendarProperties>
           scrollDirection: properties.scrollDirection.value,
         ),
         child: super.buildChild());
+
+    return comboProperties == null
+        ? calendarContext
+        : ComboContext(
+            parameters: ComboParameters(
+              position: comboProperties.position.value,
+              offset: Offset(
+                comboProperties.offsetX.value?.toDouble(),
+                comboProperties.offsetY.value?.toDouble(),
+              ),
+              autoMirror: comboProperties.autoMirror.value,
+              screenPadding: EdgeInsets.symmetric(
+                horizontal:
+                    comboProperties.screenPaddingHorizontal.value.toDouble(),
+                vertical:
+                    comboProperties.screenPaddingVertical.value.toDouble(),
+              ),
+              autoOpen: comboProperties.autoOpen.value,
+              autoClose: comboProperties.autoClose.value,
+              enabled: comboProperties.enabled.value,
+              animation: comboProperties.animation.value,
+              animationDuration: Duration(
+                  milliseconds: comboProperties.animationDurationMs.value),
+              childContentDecoratorBuilder:
+                  comboProperties.useChildDecorator.value
+                      ? _buildChildDecoration
+                      : null,
+              childDecoratorBuilder: comboProperties.useChildDecorator.value
+                  ? (context, parameters, opened, child) => Material(
+                      borderRadius: BorderRadius.circular(16),
+                      clipBehavior: Clip.antiAlias,
+                      child: child)
+                  : null,
+              popupDecoratorBuilder: comboProperties.usePopupDecorator.value
+                  ? _buildPopupDecoration
+                  : null,
+            ),
+            child: calendarContext);
   }
 
   @override
   Widget buildProperties() {
-    final editors = widget.properties.editors;
+    final properties = widget.properties;
+    final editors = properties.editors;
+    final comboEditors =
+        properties is CalendarComboProperties ? properties.comboEditors : null;
+
     return EditorsContext(
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         shrinkWrap: true,
         physics: ClampingScrollPhysics(),
-        itemCount: editors.length,
-        itemBuilder: (context, index) => editors[index].build(),
+        itemCount: editors.length +
+            (comboEditors == null ? 0 : comboEditors.length + 1),
+        itemBuilder: (context, index) {
+          final length = editors.length;
+          if (index == length) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('- Combo Properties -',
+                  style: TextStyle(
+                      color: Colors.grey, fontWeight: FontWeight.bold)),
+            );
+          }
+          return index > length
+              ? comboEditors[index - length - 1].build()
+              : editors[index].build();
+        },
         separatorBuilder: (context, index) => const SizedBox(height: 8),
       ),
     );
@@ -348,5 +460,56 @@ class CalendarProperties {
         separatorHeight,
         customSeparators,
         firstDayOfWeekIndex,
+      ];
+}
+
+class CalendarComboProperties extends CalendarProperties {
+  final position = EnumEditor<PopupPosition>(
+      title: 'Position',
+      value: PopupPosition.bottomMinMatch,
+      getList: () => PopupPosition.values);
+  final offsetX = IntEditor(title: 'Offset X', value: 0);
+  final offsetY = IntEditor(title: 'Offset Y', value: 0);
+  final autoMirror = BoolEditor(title: 'Auto Mirror', value: true);
+  final requiredSpace = IntEditor(title: 'Required Space');
+  final screenPaddingHorizontal =
+      IntEditor(title: 'Screen Padding X', value: 16);
+  final screenPaddingVertical = IntEditor(title: 'Screen Padding Y', value: 16);
+  final autoOpen = EnumEditor<ComboAutoOpen>(
+      title: 'Auto Open',
+      value: ComboAutoOpen.tap,
+      getList: () => ComboAutoOpen.values);
+  final autoClose = EnumEditor<ComboAutoClose>(
+      title: 'Auto Close',
+      value: ComboAutoClose.tapOutsideWithChildIgnorePointer,
+      getList: () => ComboAutoClose.values);
+  final enabled = BoolEditor(title: 'Enabled', value: true);
+  final animation = EnumEditor<PopupAnimation>(
+      title: 'Animation',
+      value: PopupAnimation.fade,
+      getList: () => PopupAnimation.values);
+  final animationDurationMs = IntEditor(
+      title: 'Animation Duration',
+      value: ComboParameters.defaultAnimationDuration.inMilliseconds);
+  final useChildDecorator =
+      BoolEditor(title: 'Use Custom Child Decorator', value: false);
+  final usePopupDecorator =
+      BoolEditor(title: 'Use Custom Popup Decorator', value: false);
+
+  List<Editor> get comboEditors => [
+        position,
+        offsetX,
+        offsetY,
+        autoMirror,
+        requiredSpace,
+        screenPaddingHorizontal,
+        screenPaddingVertical,
+        autoOpen,
+        autoClose,
+        enabled,
+        animation,
+        animationDurationMs,
+        useChildDecorator,
+        usePopupDecorator,
       ];
 }

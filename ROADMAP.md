@@ -1,5 +1,7 @@
 # Future plans
 
-* Implement custom selection with base class CalendarSelection
-  (factories none, single, multi, range)
+* Implement customizable selections
+* Implement rounded single selection
 * Add scroll disabling
+* Add custom days, day of weeks to demo
+* Add docs

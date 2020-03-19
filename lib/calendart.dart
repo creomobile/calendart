@@ -25,16 +25,8 @@ typedef SelectionBuilder = Widget Function(
 typedef CalendarDecoratorBuilder = Widget Function(
     BuildContext context, DateTime displayDate, Widget calendar);
 
-class DatesRange {
-  DatesRange(this.from, this.to)
-      : assert(from != null),
-        assert(to != null);
-  final DateTime from;
-  final DateTime to;
-}
-
 typedef DatesSelectionWidgetBuilder<TSelection> = Widget Function(
-    BuildContext context, TSelection selection);
+    BuildContext context, CalendarParameters parameters, TSelection selection);
 
 class CalendarParameters {
   const CalendarParameters({
@@ -50,6 +42,7 @@ class CalendarParameters {
     this.singleSelectionTitleBuilder,
     this.multiSelectionTitleBuilder,
     this.rangeSelectionTitleBuilder,
+    this.selectionTitleBuilder,
   });
 
   static const defaultParameters = CalendarParameters(
@@ -65,6 +58,7 @@ class CalendarParameters {
     singleSelectionTitleBuilder: buildDefaultSingleSelectionTitle,
     multiSelectionTitleBuilder: buildDefaultMultiSelectionTitle,
     rangeSelectionTitleBuilder: buildDefaultRangeSelectionTitle,
+    selectionTitleBuilder: buildDefaultSelectionTitle,
   );
 
   final int firstDayOfWeekIndex;
@@ -79,20 +73,7 @@ class CalendarParameters {
   final DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder;
   final DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder;
   final DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder;
-
-  Widget selectionTitleBuilder<TSelection>(
-      BuildContext context, TSelection selection) {
-    if (TSelection != dynamic) {
-      if (TSelection == DateTime) {
-        return singleSelectionTitleBuilder(context, selection as DateTime);
-      } else if (const <DateTime>{} is TSelection) {
-        return multiSelectionTitleBuilder(context, selection as Set<DateTime>);
-      } else if (TSelection == DatesRange) {
-        return rangeSelectionTitleBuilder(context, selection as DatesRange);
-      }
-    }
-    throw FormatException('Incorrect dates selection type.');
-  }
+  final DatesSelectionWidgetBuilder selectionTitleBuilder;
 
   CalendarParameters copyWith({
     int firstDayOfWeekIndex,
@@ -107,6 +88,7 @@ class CalendarParameters {
     DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder,
     DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder,
     DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder,
+    DatesSelectionWidgetBuilder selectionTitleBuilder,
   }) =>
       CalendarParameters(
         firstDayOfWeekIndex: firstDayOfWeekIndex ?? this.firstDayOfWeekIndex,
@@ -124,6 +106,8 @@ class CalendarParameters {
             multiSelectionTitleBuilder ?? this.multiSelectionTitleBuilder,
         rangeSelectionTitleBuilder:
             rangeSelectionTitleBuilder ?? this.rangeSelectionTitleBuilder,
+        selectionTitleBuilder:
+            selectionTitleBuilder ?? this.selectionTitleBuilder,
       );
 
   static Widget buildDefaultDayOfWeek(BuildContext context, int index) =>
@@ -184,36 +168,51 @@ class CalendarParameters {
     );
   }
 
-  static Widget buildDefaultSingleSelectionTitle(
-          BuildContext context, DateTime selected) =>
-      ListTile(
-        title: Text(
-            selected == null
-                ? ''
-                : MaterialLocalizations.of(context).formatFullDate(selected),
-            overflow: TextOverflow.ellipsis),
-      );
+  static Widget buildDefaultSingleSelectionTitle(BuildContext context,
+          CalendarParameters parameters, DateTime selected) =>
+      Text(MaterialLocalizations.of(context).formatFullDate(selected),
+          overflow: TextOverflow.ellipsis);
 
-  static Widget buildDefaultMultiSelectionTitle(
-      BuildContext context, Set<DateTime> selected) {
+  static Widget buildDefaultMultiSelectionTitle(BuildContext context,
+      CalendarParameters parameters, Set<DateTime> selected) {
     final localizations = MaterialLocalizations.of(context);
     final dates =
         selected?.map((e) => localizations.formatMediumDate(e))?.join(', ');
-    return ListTile(
-        title: Text(dates?.isNotEmpty == true ? dates : '',
-            overflow: TextOverflow.ellipsis));
+    return Text(dates?.isNotEmpty == true ? dates : '',
+        overflow: TextOverflow.ellipsis);
   }
 
-  static Widget buildDefaultRangeSelectionTitle(
-      BuildContext context, DatesRange selected) {
+  static Widget buildDefaultRangeSelectionTitle(BuildContext context,
+      CalendarParameters parameters, DatesRange selected) {
     final localizations = MaterialLocalizations.of(context);
-    final range = selected == null
-        ? ''
-        : localizations.formatMediumDate(selected.from) +
-            ' - ' +
-            localizations.formatMediumDate(selected.to);
-    return ListTile(title: Text(range));
+    final range = localizations.formatMediumDate(selected.from) +
+        ' - ' +
+        localizations.formatMediumDate(selected.to);
+    return Text(range);
   }
+
+  static Widget getSelectionTitle(
+          BuildContext context, CalendarParameters parameters, selected) =>
+      selected == null
+          ? const SizedBox()
+          : selected is DateTime
+              ? parameters.singleSelectionTitleBuilder(
+                  context, parameters, selected)
+              : selected is Set<DateTime>
+                  ? parameters.multiSelectionTitleBuilder(
+                      context, parameters, selected)
+                  : selected is DatesRange
+                      ? parameters.rangeSelectionTitleBuilder(
+                          context, parameters, selected)
+                      : throw FormatException(
+                          'Invalid calendar selection type.');
+
+  static Widget buildDefaultSelectionTitle(
+          BuildContext context, CalendarParameters parameters, selected) =>
+      ListTile(
+          title: selected == null
+              ? const SizedBox()
+              : getSelectionTitle(context, parameters, selected));
 }
 
 class CalendarContext extends StatelessWidget {
@@ -254,6 +253,8 @@ class CalendarContext extends StatelessWidget {
           my.multiSelectionTitleBuilder ?? def.multiSelectionTitleBuilder,
       rangeSelectionTitleBuilder:
           my.rangeSelectionTitleBuilder ?? def.rangeSelectionTitleBuilder,
+      selectionTitleBuilder:
+          my.selectionTitleBuilder ?? def.selectionTitleBuilder,
     );
 
     return CalendarContextData(this, child, merged);
@@ -270,6 +271,300 @@ class CalendarContextData extends InheritedWidget {
   @override
   bool updateShouldNotify(CalendarContextData oldWidget) =>
       _widget.parameters != oldWidget._widget.parameters;
+}
+
+typedef CalendarSelectionCanSelect = bool Function(
+    DateTime date, DayType type, int column, int row);
+
+abstract class CalendarSelectionBase {
+  const CalendarSelectionBase({
+    this.canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    this.onDayTap,
+    this.autoClosePopupAfterSelectionChanged = true,
+  })  : assert(canSelectExtra != null),
+        assert(autoClosePopupAfterSelectionChanged != null),
+        _canSelect = canSelect;
+  final bool canSelectExtra;
+  final CalendarSelectionCanSelect _canSelect;
+  final ValueSetter<DateTime> onDayTap;
+  final bool autoClosePopupAfterSelectionChanged;
+
+  @protected
+  bool canSelect(DateTime date, DayType type, int column, int row) =>
+      (canSelectExtra ||
+          (type != DayType.extraLow && type != DayType.extraHigh)) &&
+      (_canSelect == null || _canSelect(date, type, column, row));
+
+  @protected
+  void select(DateTime date) {
+    if (onDayTap != null) onDayTap(date);
+  }
+
+  @protected
+  bool isSelected(DateTime date);
+
+  bool get hasSelection;
+}
+
+class CalendarNoneSelection extends CalendarSelectionBase {
+  const CalendarNoneSelection({
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) : super(
+          canSelectExtra: canSelectExtra,
+          canSelect: canSelect,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  @override
+  bool canSelect(DateTime date, DayType type, int column, int row) =>
+      onDayTap != null && super.canSelect(date, type, column, row);
+
+  @override
+  bool isSelected(DateTime date) => false;
+
+  @override
+  bool get hasSelection => false;
+}
+
+abstract class CalendarSelection<T> extends CalendarSelectionBase {
+  CalendarSelection({
+    T selected,
+    this.onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  })  : _selected = selected,
+        super(
+          canSelectExtra: canSelectExtra,
+          canSelect: canSelect,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  T _selected;
+  T get selected => _selected;
+  set selected(T value) {
+    _selected = value;
+    if (onSelectedChanged != null) {
+      onSelectedChanged(selected);
+    }
+  }
+
+  final ValueChanged<T> onSelectedChanged;
+  DateTime _hovered;
+  @protected
+  DateTime get hovered => _hovered;
+  @protected
+  set hovered(DateTime value) => _hovered = value;
+  @protected
+  bool get preselect => false;
+
+  @override
+  bool get hasSelection => _selected != null;
+}
+
+class CalendarSingleSelection extends CalendarSelection<DateTime> {
+  CalendarSingleSelection({
+    DateTime selected,
+    ValueChanged<DateTime> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) : super(
+          selected: selected,
+          onSelectedChanged: onSelectedChanged,
+          canSelectExtra: canSelectExtra,
+          canSelect: canSelect,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  @override
+  bool isSelected(DateTime date) => date == selected;
+
+  @override
+  void select(DateTime date) {
+    selected = date;
+    super.select(date);
+  }
+}
+
+class CalendarMultiSelection extends CalendarSelection<Set<DateTime>> {
+  CalendarMultiSelection({
+    Set<DateTime> selected,
+    ValueChanged<Set<DateTime>> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = false,
+  }) : super(
+          selected: selected,
+          onSelectedChanged: onSelectedChanged,
+          canSelectExtra: canSelectExtra,
+          canSelect: canSelect,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  @override
+  bool isSelected(DateTime date) => selected?.contains(date) == true;
+
+  @override
+  void select(DateTime date) {
+    final selected = this.selected ?? {};
+    (isSelected(date) ? selected.remove : selected.add)(date);
+    this.selected = selected;
+    super.select(date);
+  }
+
+  @override
+  bool get hasSelection => super.hasSelection && selected.isNotEmpty;
+}
+
+class DatesRange {
+  DatesRange(this.from, this.to)
+      : assert(from != null),
+        assert(to != null);
+  final DateTime from;
+  final DateTime to;
+}
+
+class CalendarRangeSelection extends CalendarSelection<DatesRange> {
+  CalendarRangeSelection({
+    DatesRange selected,
+    ValueChanged<DatesRange> onSelectedChanged,
+    bool canSelectExtra = false,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) : super(
+          selected: selected,
+          onSelectedChanged: onSelectedChanged,
+          canSelectExtra: canSelectExtra,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  DateTime _from;
+  DateTime _to;
+
+  @override
+  bool get preselect => _from != null && _to == null;
+
+  @override
+  bool isSelected(DateTime date) {
+    if (_to == null && _from == null) return false;
+    DateTime from;
+    DateTime to;
+    if (_to == null) {
+      final hovered = this.hovered ?? _from;
+      final isBefore = hovered.isBefore(_from);
+      from = isBefore ? hovered : _from;
+      to = isBefore ? _from : hovered;
+    } else {
+      from = _from;
+      to = _to;
+    }
+    return !date.isBefore(from) && !date.isAfter(to);
+  }
+
+  @override
+  void select(DateTime date) {
+    if (preselect) {
+      if (date.isBefore(_from)) {
+        _to = _from;
+        _from = date;
+      } else {
+        _to = date;
+      }
+      selected = DatesRange(
+          _from, DateTime(_to.year, _to.month, _to.day, 23, 59, 59, 999));
+      super.onDayTap(date);
+    } else {
+      _from = date;
+      _to = null;
+      hovered = null;
+    }
+  }
+}
+
+class CalendarSelections {
+  static CalendarNoneSelection none({
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) =>
+      CalendarNoneSelection(
+        canSelectExtra: canSelectExtra,
+        canSelect: canSelect,
+        onDayTap: onDayTap,
+        autoClosePopupAfterSelectionChanged:
+            autoClosePopupAfterSelectionChanged,
+      );
+
+  static CalendarSingleSelection single({
+    DateTime selected,
+    ValueChanged<DateTime> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) =>
+      CalendarSingleSelection(
+        selected: selected,
+        onSelectedChanged: onSelectedChanged,
+        canSelectExtra: canSelectExtra,
+        canSelect: canSelect,
+        onDayTap: onDayTap,
+        autoClosePopupAfterSelectionChanged:
+            autoClosePopupAfterSelectionChanged,
+      );
+
+  static CalendarMultiSelection multi({
+    Set<DateTime> selected,
+    ValueChanged<Set<DateTime>> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = false,
+  }) =>
+      CalendarMultiSelection(
+        selected: selected,
+        onSelectedChanged: onSelectedChanged,
+        canSelectExtra: canSelectExtra,
+        canSelect: canSelect,
+        onDayTap: onDayTap,
+        autoClosePopupAfterSelectionChanged:
+            autoClosePopupAfterSelectionChanged,
+      );
+
+  static CalendarRangeSelection range({
+    DatesRange selected,
+    ValueChanged<DatesRange> onSelectedChanged,
+    bool canSelectExtra = false,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) =>
+      CalendarRangeSelection(
+        selected: selected,
+        onSelectedChanged: onSelectedChanged,
+        canSelectExtra: canSelectExtra,
+        onDayTap: onDayTap,
+        autoClosePopupAfterSelectionChanged:
+            autoClosePopupAfterSelectionChanged,
+      );
 }
 
 class _Calendar extends StatelessWidget {
@@ -838,7 +1133,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
     return Combo(
       key: _comboKey,
       child: _hasSelection()
-          ? parameters.selectionTitleBuilder(context, _selected)
+          ? parameters.selectionTitleBuilder(context, parameters, _selected)
           : (widget.placeholder ?? ListTile()),
       popupBuilder: (context, mirrored) {
         Widget calendar = SizedBox.fromSize(

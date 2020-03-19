@@ -653,10 +653,12 @@ class Calendar<TSelection> extends StatefulWidget {
     this.columns = 1,
     this.rows = 1,
     this.selected,
+    this.selection = const CalendarNoneSelection(),
     this.onSelectedChanged,
     this.onDayTap,
   })  : assert(columns > 0),
         assert(rows > 0),
+        assert(selection != null),
         super(key: key);
 
   final DateTime displayDate;
@@ -664,6 +666,7 @@ class Calendar<TSelection> extends StatefulWidget {
   final int columns;
   final int rows;
   final TSelection selected;
+  final CalendarSelectionBase selection;
   final ValueChanged<TSelection> onSelectedChanged;
   final ValueSetter<DateTime> onDayTap;
 
@@ -1059,6 +1062,7 @@ class CalendarCombo<TSelection> extends StatefulWidget {
     this.placeholder,
     this.popupSize = const Size.square(300),
     this.selected,
+    this.selection = const CalendarNoneSelection(),
     this.onSelectedChanged,
     this.onDayTap,
     this.openedChanged,
@@ -1066,6 +1070,7 @@ class CalendarCombo<TSelection> extends StatefulWidget {
     this.onTap,
   })  : assert(columns > 0),
         assert(rows > 0),
+        assert(selection != null),
         assert(popupSize != null),
         super(key: key);
 
@@ -1076,6 +1081,7 @@ class CalendarCombo<TSelection> extends StatefulWidget {
   final Widget placeholder;
   final Size popupSize;
   final TSelection selected;
+  final CalendarSelectionBase selection;
   final ValueChanged<TSelection> onSelectedChanged;
   final ValueSetter<DateTime> onDayTap;
   final ValueChanged<bool> openedChanged;
@@ -1150,6 +1156,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo<TSelection>> {
             columns: widget.columns,
             rows: widget.rows,
             selected: _selected,
+            selection: widget.selection,
             onSelectedChanged: (selected) {
               setState(() => _selected = selected);
               if (TSelection == DateTime) close();

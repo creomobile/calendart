@@ -27,127 +27,186 @@ class _HomePageState extends State<HomePage> {
   double _separatorHeight;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('Calendart sample app')),
-        body: ListView(
-          padding: EdgeInsets.all(16),
-          children: [
-            Column(
-              children: [
-                DemoItem<CalendarProperties>(
-                  properties: _calendarProperties,
-                  childBuilder: (properties) {
-                    final separatorWidth =
-                        properties.separatorWidth.value?.toDouble() ?? 0.0;
-                    final separatorHeight =
-                        properties.separatorHeight.value?.toDouble() ?? 0.0;
+  Widget build(BuildContext context) {
+    CalendarSelectionBase getSelection(CalendarProperties properties) {
+      final canSelectExtra = properties.canSelectExtra.value;
+      final autoClosePopupAfterSelectionChanged =
+          properties.autoClosePopupAfterSelectionChanged.value;
+      switch (properties.selectionType.value) {
+        case SelectionType.single:
+          return autoClosePopupAfterSelectionChanged == null
+              ? CalendarSelections.single(
+                  selected: properties.selected is DateTime
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra)
+              : CalendarSelections.single(
+                  selected: properties.selected is DateTime
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra,
+                  autoClosePopupAfterSelectionChanged:
+                      autoClosePopupAfterSelectionChanged);
+        case SelectionType.multi:
+          return autoClosePopupAfterSelectionChanged == null
+              ? CalendarSelections.multi(
+                  selected: properties.selected is Set<DateTime>
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra)
+              : CalendarSelections.multi(
+                  selected: properties.selected is Set<DateTime>
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra,
+                  autoClosePopupAfterSelectionChanged:
+                      autoClosePopupAfterSelectionChanged);
+        case SelectionType.range:
+          return autoClosePopupAfterSelectionChanged == null
+              ? CalendarSelections.range(
+                  selected: properties.selected is DatesRange
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra)
+              : CalendarSelections.range(
+                  selected: properties.selected is DatesRange
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra,
+                  autoClosePopupAfterSelectionChanged:
+                      autoClosePopupAfterSelectionChanged);
+        default:
+          return autoClosePopupAfterSelectionChanged == null
+              ? CalendarSelections.none(canSelectExtra: canSelectExtra)
+              : CalendarSelections.none(
+                  canSelectExtra: canSelectExtra,
+                  autoClosePopupAfterSelectionChanged:
+                      autoClosePopupAfterSelectionChanged);
+      }
+    }
 
-                    final width = properties.columns.value *
-                            (properties.width.value.toDouble() +
-                                separatorWidth) -
-                        separatorWidth;
-                    final height = properties.rows.value *
-                            (properties.height.value.toDouble() +
-                                separatorHeight) -
-                        separatorHeight;
-                    // update calendar widget if size changed
-                    if (width != _width ||
-                        height != _height ||
-                        separatorWidth != _separatorWidth ||
-                        separatorHeight != _separatorHeight) {
-                      _width = width;
-                      _height = height;
-                      _separatorWidth = separatorWidth;
-                      _separatorHeight = separatorHeight;
-                      _calendarKey = GlobalKey<CalendarState>();
-                    }
-                    Calendar createCalendar<T>() => Calendar<T>(
-                          key: _calendarKey,
+    return Scaffold(
+      appBar: AppBar(title: Text('Calendart sample app')),
+      body: ListView(
+        padding: EdgeInsets.all(16),
+        children: [
+          Column(
+            children: [
+              DemoItem<CalendarProperties>(
+                properties: _calendarProperties,
+                childBuilder: (properties) {
+                  final separatorWidth =
+                      properties.separatorWidth.value?.toDouble() ?? 0.0;
+                  final separatorHeight =
+                      properties.separatorHeight.value?.toDouble() ?? 0.0;
+                  final width = properties.columns.value *
+                          (properties.width.value.toDouble() + separatorWidth) -
+                      separatorWidth;
+                  final height = properties.rows.value *
+                          (properties.height.value.toDouble() +
+                              separatorHeight) -
+                      separatorHeight;
+
+                  // update calendar widget if size changed
+                  if (width != _width ||
+                      height != _height ||
+                      separatorWidth != _separatorWidth ||
+                      separatorHeight != _separatorHeight) {
+                    _width = width;
+                    _height = height;
+                    _separatorWidth = separatorWidth;
+                    _separatorHeight = separatorHeight;
+                    _calendarKey = GlobalKey<CalendarState>();
+                  }
+                  Calendar createCalendar<T>() => Calendar<T>(
+                        key: _calendarKey,
+                        displayDate: DateTime(
+                            properties.year.value, properties.month.value),
+                        columns: properties.columns.value,
+                        rows: properties.rows.value,
+                        selection: getSelection(properties),
+                        onDisplayDateChanged: (date) {
+                          properties.year.value = date.year;
+                          properties.month.value = date.month;
+                        },
+                      );
+                  return ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxWidth: width, maxHeight: height),
+                    child: () {
+                      switch (properties.selectionType.value) {
+                        case SelectionType.single:
+                          return createCalendar<DateTime>();
+                        case SelectionType.multi:
+                          return createCalendar<Set<DateTime>>();
+                        case SelectionType.range:
+                          return createCalendar<DatesRange>();
+                        default:
+                          return createCalendar();
+                      }
+                    }(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              DemoItem<CalendarProperties>(
+                comboKey: _comboKey,
+                properties: _comboProperties,
+                childBuilder: (properties) {
+                  final separatorWidth =
+                      properties.separatorWidth.value?.toDouble() ?? 0.0;
+                  final separatorHeight =
+                      properties.separatorHeight.value?.toDouble() ?? 0.0;
+                  final width = properties.columns.value *
+                          (properties.width.value.toDouble() + separatorWidth) -
+                      separatorWidth;
+                  final height = properties.rows.value *
+                          (properties.height.value.toDouble() +
+                              separatorHeight) -
+                      separatorHeight;
+                  Widget createCombo<T>() => ComboContext(
+                        parameters: ComboParameters(),
+                        child: CalendarCombo<T>(
+                          key: _comboKey,
                           displayDate: DateTime(
                               properties.year.value, properties.month.value),
                           columns: properties.columns.value,
                           rows: properties.rows.value,
+                          selection: getSelection(properties),
+                          placeholder: const ListTile(
+                              title: Text('Calendar Combo',
+                                  style: TextStyle(color: Colors.grey))),
+                          popupSize: Size(width, height),
                           onDisplayDateChanged: (date) {
                             properties.year.value = date.year;
                             properties.month.value = date.month;
                           },
-                        );
-                    return ConstrainedBox(
-                      constraints:
-                          BoxConstraints(maxWidth: width, maxHeight: height),
-                      child: () {
-                        switch (properties.selectionType.value) {
-                          case SelectionType.single:
-                            return createCalendar<DateTime>();
-                          case SelectionType.multi:
-                            return createCalendar<Set<DateTime>>();
-                          case SelectionType.range:
-                            return createCalendar<DatesRange>();
-                          default:
-                            return createCalendar();
-                        }
-                      }(),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                DemoItem<CalendarProperties>(
-                  comboKey: _comboKey,
-                  properties: _comboProperties,
-                  childBuilder: (properties) {
-                    final separatorWidth =
-                        properties.separatorWidth.value?.toDouble() ?? 0.0;
-                    final separatorHeight =
-                        properties.separatorHeight.value?.toDouble() ?? 0.0;
-                    final width = properties.columns.value *
-                            (properties.width.value.toDouble() +
-                                separatorWidth) -
-                        separatorWidth;
-                    final height = properties.rows.value *
-                            (properties.height.value.toDouble() +
-                                separatorHeight) -
-                        separatorHeight;
-                    Widget createCombo<T>() => ComboContext(
-                          parameters: ComboParameters(),
-                          child: CalendarCombo<T>(
-                            key: _comboKey,
-                            displayDate: DateTime(
-                                properties.year.value, properties.month.value),
-                            columns: properties.columns.value,
-                            rows: properties.rows.value,
-                            placeholder: const ListTile(
-                                title: Text('Calendar Combo',
-                                    style: TextStyle(color: Colors.grey))),
-                            popupSize: Size(width, height),
-                            onDisplayDateChanged: (date) {
-                              properties.year.value = date.year;
-                              properties.month.value = date.month;
-                            },
-                            onSelectedChanged: (e) => properties.selected = e,
-                          ),
-                        );
-                    return ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: 300),
-                      child: () {
-                        switch (properties.selectionType.value) {
-                          case SelectionType.single:
-                            return createCombo<DateTime>();
-                          case SelectionType.multi:
-                            return createCombo<Set<DateTime>>();
-                          case SelectionType.range:
-                            return createCombo<DatesRange>();
-                          default:
-                            return createCombo();
-                        }
-                      }(),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
+                          onSelectedChanged: (e) => properties.selected = e,
+                        ),
+                      );
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 300),
+                    child: () {
+                      switch (properties.selectionType.value) {
+                        case SelectionType.single:
+                          return createCombo<DateTime>();
+                        case SelectionType.multi:
+                          return createCombo<Set<DateTime>>();
+                        case SelectionType.range:
+                          return createCombo<DatesRange>();
+                        default:
+                          return createCombo();
+                      }
+                    }(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 enum SelectionType { none, single, multi, range }
@@ -435,6 +494,12 @@ class CalendarProperties {
       title: 'Selection Type',
       getList: () => SelectionType.values,
       value: SelectionType.single);
+  final canSelectExtra = BoolEditor(title: 'Can Select Extra', value: false);
+  bool get showAutoClosePopup => false;
+  final autoClosePopupAfterSelectionChanged = EnumEditor<bool>(
+      title: 'Auto Close Popup After Selection Changed',
+      getList: () => [null, true, false],
+      value: null);
   final showDaysOfWeek = BoolEditor(title: 'Show Days of Week', value: true);
   final showDecorator = BoolEditor(title: 'Show Custom Decorator', value: true);
   final separatorWidth = IntEditor(title: 'Separator Width', value: 32);
@@ -454,6 +519,8 @@ class CalendarProperties {
         rows,
         scrollDirection,
         selectionType,
+        canSelectExtra,
+        if (showAutoClosePopup) autoClosePopupAfterSelectionChanged,
         showDaysOfWeek,
         showDecorator,
         separatorWidth,
@@ -464,6 +531,9 @@ class CalendarProperties {
 }
 
 class CalendarComboProperties extends CalendarProperties {
+  @override
+  bool get showAutoClosePopup => true;
+
   final position = EnumEditor<PopupPosition>(
       title: 'Position',
       value: PopupPosition.bottomMinMatch,

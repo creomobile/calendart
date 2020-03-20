@@ -5,7 +5,19 @@ import 'dart:ui';
 import 'package:combos/combos.dart';
 import 'package:flutter/material.dart';
 
+/// Determines type of the calendar day
+/// [extraLow] - day from previous month
+/// [current] - day from current month
+/// [today] - day is today )
+/// [extraHigh] -day from next month
 enum DayType { extraLow, current, today, extraHigh }
+
+/// Signature for calendar day builder.
+/// [context] - current build context.
+/// [parameters] - calendar parameters.
+/// [date] - date of the day.
+/// [type] - type of the day.
+/// [column], [row] - position in calendar.
 typedef DayBuilder = Widget Function(
     BuildContext context,
     CalendarParameters parameters,
@@ -13,6 +25,16 @@ typedef DayBuilder = Widget Function(
     DayType type,
     int column,
     int row);
+
+/// Signature for calendar visual selection builder.
+/// [context] - current build context.
+/// [parameters] - calendar parameters.
+/// [date] - date of the day.
+/// [type] - type of the day.
+/// [column], [row] - position in calendar.
+/// [day] - widget for the calendar day.
+/// [preselect] - determine if selection is in preparing mode (hover).
+/// [isSelected] - handler for check is date selected.
 typedef SelectionBuilder = Widget Function(
     BuildContext context,
     CalendarParameters parameters,
@@ -22,13 +44,21 @@ typedef SelectionBuilder = Widget Function(
     Widget day,
     bool preselect,
     bool Function(DateTime date) isSelected);
+
+/// Signature for calendar decorator builder.
+/// [context] - current build context.
+/// [displayDate] - displaying calendar month.
+/// [calendar] - calendar widget.
 typedef CalendarDecoratorBuilder = Widget Function(
     BuildContext context, DateTime displayDate, Widget calendar);
 
-typedef DatesSelectionWidgetBuilder<TSelection> = Widget Function(
+/// Signature for combo calendar title builder
+typedef SelectionTitleBuilder<TSelection> = Widget Function(
     BuildContext context, CalendarParameters parameters, TSelection selection);
 
+/// Common parameters for calendar widgets.
 class CalendarParameters {
+  /// Creates common parameters for calendar widgets.
   const CalendarParameters({
     this.firstDayOfWeekIndex,
     this.showDaysOfWeek,
@@ -46,6 +76,7 @@ class CalendarParameters {
     this.selectionTitleBuilder,
   });
 
+  // Common parameters with dafault values for calendar widgets
   static const defaultParameters = CalendarParameters(
     showDaysOfWeek: true,
     dayOfWeekBuilder: buildDefaultDayOfWeek,
@@ -63,21 +94,57 @@ class CalendarParameters {
     selectionTitleBuilder: buildDefaultSelectionTitle,
   );
 
+  /// Determines first day of week in calendar.
+  /// By default it will be extracted from current locale
   final int firstDayOfWeekIndex;
-  final bool showDaysOfWeek;
-  final IndexedWidgetBuilder dayOfWeekBuilder;
-  final DayBuilder dayBuilder;
-  final SelectionBuilder singleSelectionBuilder;
-  final SelectionBuilder multiSelectionBuilder;
-  final CalendarDecoratorBuilder decoratorBuilder;
-  final PreferredSizeWidget horizontalSeparator;
-  final PreferredSizeWidget verticalSeparator;
-  final Axis scrollDirection;
-  final DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder;
-  final DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder;
-  final DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder;
-  final DatesSelectionWidgetBuilder selectionTitleBuilder;
 
+  /// If false, calendar will not show days of week.
+  /// Default is true.
+  final bool showDaysOfWeek;
+
+  /// Define day of week builder.
+  final IndexedWidgetBuilder dayOfWeekBuilder;
+
+  /// Define day builder.
+  final DayBuilder dayBuilder;
+
+  /// Define selection builder for single selections -
+  /// [CalendarSingleSelection], [CalendarSingleOrNoneSelection].
+  final SelectionBuilder singleSelectionBuilder;
+
+  /// Define selection builder for multi selections -
+  /// [CalendarMultiSelection], [CalendarRangeSelection].
+  final SelectionBuilder multiSelectionBuilder;
+
+  /// Define decorator builder for whole calendar.
+  final CalendarDecoratorBuilder decoratorBuilder;
+
+  /// Widget for displaying horizontal separator between calendars.
+  final PreferredSizeWidget horizontalSeparator;
+
+  /// Widget for displaying vertical separator between calendars.
+  final PreferredSizeWidget verticalSeparator;
+
+  /// Define calendars scroll direction.
+  final Axis scrollDirection;
+
+  /// Define combo title builder for single selections -
+  /// [CalendarSingleSelection], [CalendarSingleOrNoneSelection].
+  final SelectionTitleBuilder<DateTime> singleSelectionTitleBuilder;
+
+  /// Define combo title builder for calendars with [CalendarMultiSelection].
+  final SelectionTitleBuilder<Set<DateTime>> multiSelectionTitleBuilder;
+
+  /// Define combo title builder for calendars with [CalendarRangeSelection].
+  final SelectionTitleBuilder<DatesRange> rangeSelectionTitleBuilder;
+
+  /// Define combo title builder for all calendar selections.
+  /// (selects one of [singleSelectionTitleBuilder], [multiSelectionTitleBuilder],
+  /// [rangeSelectionTitleBuilder])
+  final SelectionTitleBuilder selectionTitleBuilder;
+
+  /// Creates a copy of this calendar parameters but with the given fields replaced with
+  /// the new values.
   CalendarParameters copyWith({
     int firstDayOfWeekIndex,
     bool showDaysOfWeek,
@@ -89,10 +156,10 @@ class CalendarParameters {
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
     Axis scrollDirection,
-    DatesSelectionWidgetBuilder<DateTime> singleSelectionTitleBuilder,
-    DatesSelectionWidgetBuilder<Set<DateTime>> multiSelectionTitleBuilder,
-    DatesSelectionWidgetBuilder<DatesRange> rangeSelectionTitleBuilder,
-    DatesSelectionWidgetBuilder selectionTitleBuilder,
+    SelectionTitleBuilder<DateTime> singleSelectionTitleBuilder,
+    SelectionTitleBuilder<Set<DateTime>> multiSelectionTitleBuilder,
+    SelectionTitleBuilder<DatesRange> rangeSelectionTitleBuilder,
+    SelectionTitleBuilder selectionTitleBuilder,
   }) =>
       CalendarParameters(
         firstDayOfWeekIndex: firstDayOfWeekIndex ?? this.firstDayOfWeekIndex,
@@ -117,11 +184,13 @@ class CalendarParameters {
             selectionTitleBuilder ?? this.selectionTitleBuilder,
       );
 
+  /// Default builder for [dayOfWeekBuilder]
   static Widget buildDefaultDayOfWeek(BuildContext context, int index) =>
       Center(
           child: Text(MaterialLocalizations.of(context).narrowWeekdays[index],
               style: TextStyle(color: Colors.blueAccent)));
 
+  /// Default builder for [dayBuilder]
   static Widget buildDefaultDay(
           BuildContext context,
           CalendarParameters parameters,
@@ -140,6 +209,34 @@ class CalendarParameters {
         ),
       ));
 
+  /// Default builder for [singleSelectionBuilder]
+  static Widget buildDefaultSingleSelection(
+      BuildContext context,
+      CalendarParameters parameters,
+      DateTime date,
+      int column,
+      int row,
+      Widget day,
+      bool preselect,
+      bool Function(DateTime date) isSelected,
+      {Color color}) {
+    color ??= Theme.of(context).primaryColor;
+    return isSelected(date)
+        ? Container(
+            child: DefaultTextStyle(child: day, style: TextStyle(color: color)),
+            decoration: BoxDecoration(
+              color:
+                  preselect ? color.withOpacity(0.05) : color.withOpacity(0.1),
+              border:
+                  Border.all(color: preselect ? color.withOpacity(0.3) : color),
+              borderRadius: const BorderRadius.all(Radius.circular(1000)),
+            ),
+          )
+        : day;
+    //return Container()
+  }
+
+  /// Default builder for [multiSelectionBuilder]
   static Widget buildDefaultMultiSelection(
       BuildContext context,
       CalendarParameters parameters,
@@ -176,37 +273,13 @@ class CalendarParameters {
     );
   }
 
-  static Widget buildDefaultSingleSelection(
-      BuildContext context,
-      CalendarParameters parameters,
-      DateTime date,
-      int column,
-      int row,
-      Widget day,
-      bool preselect,
-      bool Function(DateTime date) isSelected,
-      {Color color}) {
-    color ??= Theme.of(context).primaryColor;
-    return isSelected(date)
-        ? Container(
-            child: DefaultTextStyle(child: day, style: TextStyle(color: color)),
-            decoration: BoxDecoration(
-              color:
-                  preselect ? color.withOpacity(0.05) : color.withOpacity(0.1),
-              border:
-                  Border.all(color: preselect ? color.withOpacity(0.3) : color),
-              borderRadius: const BorderRadius.all(Radius.circular(1000)),
-            ),
-          )
-        : day;
-    //return Container()
-  }
-
+  /// Default builder for [singleSelectionTitleBuilder]
   static Widget buildDefaultSingleSelectionTitle(BuildContext context,
           CalendarParameters parameters, DateTime selected) =>
       Text(MaterialLocalizations.of(context).formatFullDate(selected),
           overflow: TextOverflow.ellipsis);
 
+  /// Default builder for [multiSelectionTitleBuilder]
   static Widget buildDefaultMultiSelectionTitle(BuildContext context,
       CalendarParameters parameters, Set<DateTime> selected) {
     final localizations = MaterialLocalizations.of(context);
@@ -216,6 +289,7 @@ class CalendarParameters {
         overflow: TextOverflow.ellipsis);
   }
 
+  /// Default builder for [rangeSelectionTitleBuilder]
   static Widget buildDefaultRangeSelectionTitle(BuildContext context,
       CalendarParameters parameters, DatesRange selected) {
     final localizations = MaterialLocalizations.of(context);
@@ -241,6 +315,7 @@ class CalendarParameters {
                       : throw FormatException(
                           'Invalid calendar selection type.');
 
+  /// Default builder for [selectionTitleBuilder]
   static Widget buildDefaultSelectionTitle(
           BuildContext context, CalendarParameters parameters, selected) =>
       ListTile(
@@ -249,6 +324,8 @@ class CalendarParameters {
               : getSelectionTitle(context, parameters, selected));
 }
 
+/// Allows to set [CalendarParameters] for all [Calendar], [CalendarCombo]
+/// widgets in the [child].
 class CalendarContext extends StatelessWidget {
   const CalendarContext({
     Key key,
@@ -298,6 +375,7 @@ class CalendarContext extends StatelessWidget {
   }
 }
 
+/// Provides [CalendarParameters] for the specified [CalendarContext].
 class CalendarContextData extends InheritedWidget {
   const CalendarContextData(this._widget, Widget child, this.parameters)
       : super(child: child);
@@ -310,21 +388,36 @@ class CalendarContextData extends InheritedWidget {
       _widget.parameters != oldWidget._widget.parameters;
 }
 
+/// Signature for determining if specified date is selected.
+/// [date] - date to check selection.
+/// [type] - type of the calendar day.
+/// [column], [row] - position in calendar.
 typedef CalendarSelectionCanSelect = bool Function(
     DateTime date, DayType type, int column, int row);
 
+/// Base class for calendar selections
 abstract class CalendarSelectionBase {
   const CalendarSelectionBase({
     this.canSelectExtra = false,
+
+    /// Handler to determine if user can select specified date.
     CalendarSelectionCanSelect canSelect,
     this.onDayTap,
     this.autoClosePopupAfterSelectionChanged = true,
   })  : assert(canSelectExtra != null),
         assert(autoClosePopupAfterSelectionChanged != null),
         _canSelect = canSelect;
+
+  /// Determines if user can select the days which not in current month.
   final bool canSelectExtra;
+
   final CalendarSelectionCanSelect _canSelect;
+
+  /// Callbacks when user tapped on calendar day.
   final ValueSetter<DateTime> onDayTap;
+
+  /// Determines if [CalendarCombo] should automatically close popup
+  /// when selection changed.
   final bool autoClosePopupAfterSelectionChanged;
 
   @protected
@@ -344,9 +437,11 @@ abstract class CalendarSelectionBase {
   @protected
   bool isSelected(DateTime date, DayType type, int column, int row);
 
+  /// Determines if there is at least one selected day.
   bool get hasSelection;
 }
 
+/// Not selectable calendar selection.
 class CalendarNoneSelection extends CalendarSelectionBase {
   const CalendarNoneSelection({
     bool canSelectExtra = false,
@@ -372,6 +467,7 @@ class CalendarNoneSelection extends CalendarSelectionBase {
   bool get hasSelection => false;
 }
 
+/// Base class for selectable calendar selections
 abstract class CalendarSelection<T> extends CalendarSelectionBase {
   CalendarSelection({
     T selected,
@@ -419,6 +515,7 @@ abstract class CalendarSelection<T> extends CalendarSelectionBase {
   bool get hasSelection => _selected != null;
 }
 
+/// Single date selection.
 class CalendarSingleSelection extends CalendarSelection<DateTime> {
   CalendarSingleSelection({
     DateTime selected,
@@ -451,6 +548,7 @@ class CalendarSingleSelection extends CalendarSelection<DateTime> {
   }
 }
 
+/// Single date selection with the possibility to unselect.
 class CalendarSingleOrNoneSelection extends CalendarSingleSelection {
   CalendarSingleOrNoneSelection({
     DateTime selected,
@@ -476,6 +574,7 @@ class CalendarSingleOrNoneSelection extends CalendarSingleSelection {
   }
 }
 
+/// Multi dates selection.
 class CalendarMultiSelection extends CalendarSelection<Set<DateTime>> {
   CalendarMultiSelection({
     Set<DateTime> selected,
@@ -513,14 +612,20 @@ class CalendarMultiSelection extends CalendarSelection<Set<DateTime>> {
   bool get hasSelection => super.hasSelection && selected.isNotEmpty;
 }
 
+/// Define range of dates.
 class DatesRange {
   DatesRange(this.from, this.to)
       : assert(from != null),
         assert(to != null);
+
+  /// Start date of range.
   final DateTime from;
+
+  /// End date of range.
   final DateTime to;
 }
 
+/// Range dates selection.
 class CalendarRangeSelection extends CalendarSelection<DatesRange> {
   CalendarRangeSelection({
     DatesRange selected,
@@ -584,6 +689,7 @@ class CalendarRangeSelection extends CalendarSelection<DatesRange> {
   }
 }
 
+/// Helper to build calendar selections.
 class CalendarSelections {
   static CalendarNoneSelection none({
     bool canSelectExtra = false,
@@ -795,7 +901,9 @@ mixin _SelectionListenerMixin<T extends _Selectable> on State<T> {
   }
 }
 
+/// Multi-calendar widget.
 class Calendar extends StatefulWidget implements _Selectable {
+  /// Creates multi-calendar widget.
   const Calendar({
     Key key,
     this.displayDate,
@@ -808,10 +916,19 @@ class Calendar extends StatefulWidget implements _Selectable {
         assert(selection != null),
         super(key: key);
 
+  /// First month of calendars set.
   final DateTime displayDate;
+
+  /// Callbacks when first month of calendars set is changed.
   final ValueChanged<DateTime> onDisplayDateChanged;
+
+  /// Number of months by horizontal.
   final int columns;
+
+  /// Number of months by vertical.
   final int rows;
+
+  /// Determines dates selection method.
   @override
   final CalendarSelectionBase selection;
 
@@ -819,6 +936,8 @@ class Calendar extends StatefulWidget implements _Selectable {
   CalendarState createState() => CalendarState(displayDate);
 }
 
+/// State for a [Calendar].
+/// Can paginate months by [inc], [dec] methods.
 class CalendarState extends State<Calendar> with _SelectionListenerMixin {
   CalendarState(DateTime displayDate)
       : _displayDate = _getMonthDate(displayDate);
@@ -865,7 +984,10 @@ class CalendarState extends State<Calendar> with _SelectionListenerMixin {
       _controller.animateTo(_controller.position.pixels + offset,
           duration: const Duration(milliseconds: 300), curve: Curves.bounceOut);
 
+  /// Move scroll forward by one position of months.
   void inc() => _move(_lenght);
+
+  /// Move scroll backward by one position of months.
   void dec() => _move(-_lenght);
 
   DateTime _getDate(int row, [int column = 0]) {
@@ -1082,7 +1204,9 @@ class _SnapScrollPhysics extends ScrollPhysics {
   bool get allowImplicitScrolling => false;
 }
 
+/// Combo widget with calendars popup.
 class CalendarCombo extends StatefulWidget implements _Selectable {
+  /// Creates combo widget with calendars popup.
   const CalendarCombo({
     Key key,
     this.displayDate,
@@ -1101,22 +1225,45 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
         assert(popupSize != null),
         super(key: key);
 
+  /// First month of calendars set.
   final DateTime displayDate;
+
+  /// Callbacks when first month of calendars set is changed.
   final ValueChanged<DateTime> onDisplayDateChanged;
+
+  /// Number of months by horizontal.
   final int columns;
+
+  /// Number of months by vertical.
   final int rows;
+
+  /// Widget displaying as combo child when selection is empty.
   final Widget placeholder;
+
+  /// Size of popup with calendars.
   final Size popupSize;
+
+  /// Determines dates selection method.
   @override
   final CalendarSelectionBase selection;
+
+  /// Callbacks when the popup is opening or closing
   final ValueChanged<bool> openedChanged;
+
+  /// Callbacks when the mouse pointer enters on or exits from child or popup.
   final ValueChanged<bool> hoveredChanged;
+
+  /// Called when the user taps on [child].
+  /// Also can be called by 'long tap' event if [ComboParameters.autoOpen]
+  /// is set to [ComboAutoOpen.hovered] and platform is not 'Web'
   final GestureTapCallback onTap;
 
   @override
   CalendarComboState createState() => CalendarComboState(displayDate);
 }
 
+/// State for a [CalendarCombo].
+/// Can [open] and [close] popups, paginate months by [inc], [dec] methods.
 class CalendarComboState<TSelection> extends State<CalendarCombo>
     with _SelectionListenerMixin {
   CalendarComboState(this._displayDate);
@@ -1136,10 +1283,16 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
     }
   }
 
+  /// Opens the popup.
   void open() => _comboKey.currentState?.open();
+
+  /// Closes the popup.
   void close() => _comboKey.currentState?.close();
 
+  /// Move scroll forward by one position of months.
   void inc() => _calendarKey.currentState.inc();
+
+  /// Move scroll backward by one position of months.
   void dec() => _calendarKey.currentState.dec();
 
   @override

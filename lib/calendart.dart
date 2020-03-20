@@ -362,6 +362,8 @@ abstract class CalendarSelection<T> extends CalendarSelectionBase {
     _listeners.forEach((e) => e(value));
   }
 
+  void clear() => selected = null;
+
   final ValueChanged<T> onSelectedChanged;
   DateTime _hovered;
   @protected
@@ -421,6 +423,9 @@ class CalendarMultiSelection extends CalendarSelection<Set<DateTime>> {
           autoClosePopupAfterSelectionChanged:
               autoClosePopupAfterSelectionChanged,
         );
+
+  @override
+  void clear() => selected = {};
 
   @override
   bool isSelected(DateTime date, DayType type, int column, int row) =>

@@ -19,6 +19,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _calendarProperties = CalendarProperties();
   final _comboProperties = CalendarComboProperties();
+  CalendarSelection _calendarSelection;
+  CalendarSelection _comboSelection;
   GlobalKey<CalendarState> _calendarKey;
   final _comboKey = GlobalKey<CalendarComboState>();
   double _width;
@@ -40,14 +42,16 @@ class _HomePageState extends State<HomePage> {
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                 )
               : CalendarSelections.single(
                   selected: properties.selected is DateTime
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                   autoClosePopupAfterSelectionChanged:
                       autoClosePopupAfterSelectionChanged,
                 );
@@ -58,14 +62,16 @@ class _HomePageState extends State<HomePage> {
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                 )
               : CalendarSelections.multi(
                   selected: properties.selected is Set<DateTime>
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                   autoClosePopupAfterSelectionChanged:
                       autoClosePopupAfterSelectionChanged,
                 );
@@ -76,14 +82,16 @@ class _HomePageState extends State<HomePage> {
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                 )
               : CalendarSelections.range(
                   selected: properties.selected is DatesRange
                       ? properties.selected
                       : null,
                   canSelectExtra: canSelectExtra,
-                  onSelectedChanged: (_) => properties.selected = _,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
                   autoClosePopupAfterSelectionChanged:
                       autoClosePopupAfterSelectionChanged,
                 );
@@ -131,21 +139,39 @@ class _HomePageState extends State<HomePage> {
                     _separatorHeight = separatorHeight;
                     _calendarKey = GlobalKey<CalendarState>();
                   }
-                  return ConstrainedBox(
-                    constraints:
-                        BoxConstraints(maxWidth: width, maxHeight: height),
-                    child: Calendar(
-                      key: _calendarKey,
-                      displayDate: DateTime(
-                          properties.year.value, properties.month.value),
-                      columns: properties.columns.value,
-                      rows: properties.rows.value,
-                      selection: getSelection(properties),
-                      onDisplayDateChanged: (date) {
-                        properties.year.value = date.year;
-                        properties.month.value = date.month;
-                      },
-                    ),
+                  return Row(
+                    children: [
+                      ConstrainedBox(
+                        constraints:
+                            BoxConstraints(maxWidth: width, maxHeight: height),
+                        child: Calendar(
+                          key: _calendarKey,
+                          displayDate: DateTime(
+                              properties.year.value, properties.month.value),
+                          columns: properties.columns.value,
+                          rows: properties.rows.value,
+                          selection: _calendarSelection =
+                              getSelection(properties),
+                          onDisplayDateChanged: (date) {
+                            properties.year.value = date.year;
+                            properties.month.value = date.month;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        icon: Icon(Icons.clear),
+                        color: Colors.blueAccent,
+                        tooltip: 'Clear Selection',
+                        onPressed: _calendarSelection?.hasSelection == true
+                            ? () {
+                                if (_calendarSelection is CalendarSelection) {
+                                  _calendarSelection.clear();
+                                }
+                              }
+                            : null,
+                      )
+                    ],
                   );
                 },
               ),
@@ -165,24 +191,41 @@ class _HomePageState extends State<HomePage> {
                           (properties.height.value.toDouble() +
                               separatorHeight) -
                       separatorHeight;
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: 300),
-                    child: CalendarCombo(
-                      key: _comboKey,
-                      displayDate: DateTime(
-                          properties.year.value, properties.month.value),
-                      columns: properties.columns.value,
-                      rows: properties.rows.value,
-                      selection: getSelection(properties),
-                      placeholder: const ListTile(
-                          title: Text('Calendar Combo',
-                              style: TextStyle(color: Colors.grey))),
-                      popupSize: Size(width, height),
-                      onDisplayDateChanged: (date) {
-                        properties.year.value = date.year;
-                        properties.month.value = date.month;
-                      },
-                    ),
+                  return Row(
+                    children: [
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: 300),
+                        child: CalendarCombo(
+                          key: _comboKey,
+                          displayDate: DateTime(
+                              properties.year.value, properties.month.value),
+                          columns: properties.columns.value,
+                          rows: properties.rows.value,
+                          selection: _comboSelection = getSelection(properties),
+                          placeholder: const ListTile(
+                              title: Text('Calendar Combo',
+                                  style: TextStyle(color: Colors.grey))),
+                          popupSize: Size(width, height),
+                          onDisplayDateChanged: (date) {
+                            properties.year.value = date.year;
+                            properties.month.value = date.month;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        icon: Icon(Icons.clear),
+                        color: Colors.blueAccent,
+                        tooltip: 'Clear Selection',
+                        onPressed: _comboSelection?.hasSelection == true
+                            ? () {
+                                if (_comboSelection is CalendarSelection) {
+                                  _comboSelection.clear();
+                                }
+                              }
+                            : null,
+                      )
+                    ],
                   );
                 },
               ),

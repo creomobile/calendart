@@ -1,3 +1,7 @@
+## [1.0.0] - 3/20/2020.
+
+* Implement customizable selections + fixes
+
 ## [0.9.0] - 3/19/2020.
 
 * Implement Calendar, CalendarCombo

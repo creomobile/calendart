@@ -6,6 +6,8 @@ High customizable Flutter calendar widgets with popup view and multi-columns/row
 
 [Samples is available here](https://samples.creomobile.com/#/calendart)
 
+![alt text](https://samples.creomobile.com/calendart.png)
+
 ### Example:
 
 ```dart

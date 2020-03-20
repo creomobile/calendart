@@ -34,7 +34,8 @@ class CalendarParameters {
     this.showDaysOfWeek,
     this.dayOfWeekBuilder,
     this.dayBuilder,
-    this.selectionBuilder,
+    this.singleSelectionBuilder,
+    this.multiSelectionBuilder,
     this.decoratorBuilder,
     this.horizontalSeparator,
     this.verticalSeparator,
@@ -49,7 +50,8 @@ class CalendarParameters {
     showDaysOfWeek: true,
     dayOfWeekBuilder: buildDefaultDayOfWeek,
     dayBuilder: buildDefaultDay,
-    selectionBuilder: buildDefaultSelection,
+    singleSelectionBuilder: buildDefaultSingleSelection,
+    multiSelectionBuilder: buildDefaultMultiSelection,
     horizontalSeparator: PreferredSize(
         preferredSize: Size.fromWidth(32), child: SizedBox(width: 32)),
     verticalSeparator: PreferredSize(
@@ -65,7 +67,8 @@ class CalendarParameters {
   final bool showDaysOfWeek;
   final IndexedWidgetBuilder dayOfWeekBuilder;
   final DayBuilder dayBuilder;
-  final SelectionBuilder selectionBuilder;
+  final SelectionBuilder singleSelectionBuilder;
+  final SelectionBuilder multiSelectionBuilder;
   final CalendarDecoratorBuilder decoratorBuilder;
   final PreferredSizeWidget horizontalSeparator;
   final PreferredSizeWidget verticalSeparator;
@@ -80,7 +83,8 @@ class CalendarParameters {
     bool showDaysOfWeek,
     IndexedWidgetBuilder dayOfWeekBuilder,
     DayBuilder dayBuilder,
-    SelectionBuilder selectionBuilder,
+    SelectionBuilder singleSelectionBuilder,
+    SelectionBuilder multiSelectionBuilder,
     CalendarDecoratorBuilder decoratorBuilder,
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
@@ -95,7 +99,10 @@ class CalendarParameters {
         showDaysOfWeek: showDaysOfWeek ?? this.showDaysOfWeek,
         dayOfWeekBuilder: dayOfWeekBuilder ?? this.dayOfWeekBuilder,
         dayBuilder: dayBuilder ?? this.dayBuilder,
-        selectionBuilder: selectionBuilder ?? this.selectionBuilder,
+        singleSelectionBuilder:
+            singleSelectionBuilder ?? this.singleSelectionBuilder,
+        multiSelectionBuilder:
+            multiSelectionBuilder ?? this.multiSelectionBuilder,
         decoratorBuilder: decoratorBuilder ?? this.decoratorBuilder,
         horizontalSeparator: horizontalSeparator ?? this.horizontalSeparator,
         verticalSeparator: verticalSeparator ?? this.verticalSeparator,
@@ -133,7 +140,7 @@ class CalendarParameters {
         ),
       ));
 
-  static Widget buildDefaultSelection(
+  static Widget buildDefaultMultiSelection(
       BuildContext context,
       CalendarParameters parameters,
       DateTime date,
@@ -142,7 +149,7 @@ class CalendarParameters {
       Widget day,
       bool preselect,
       bool Function(DateTime date) isSelected,
-      {Color color = Colors.blueAccent}) {
+      {Color color}) {
     if (!isSelected(date)) return day;
     final leftSelected =
         column != 0 && isSelected(date.subtract(const Duration(days: 1)));
@@ -152,6 +159,7 @@ class CalendarParameters {
         isSelected(date.subtract(const Duration(days: DateTime.daysPerWeek)));
     final bottomSelected = row != 5 &&
         isSelected(date.add(const Duration(days: DateTime.daysPerWeek)));
+    color ??= Theme.of(context).primaryColor;
     final borderSide =
         BorderSide(color: preselect ? color.withOpacity(0.3) : color);
     return Container(
@@ -166,6 +174,32 @@ class CalendarParameters {
         ),
       ),
     );
+  }
+
+  static Widget buildDefaultSingleSelection(
+      BuildContext context,
+      CalendarParameters parameters,
+      DateTime date,
+      int column,
+      int row,
+      Widget day,
+      bool preselect,
+      bool Function(DateTime date) isSelected,
+      {Color color}) {
+    color ??= Theme.of(context).primaryColor;
+    return isSelected(date)
+        ? Container(
+            child: DefaultTextStyle(child: day, style: TextStyle(color: color)),
+            decoration: BoxDecoration(
+              color:
+                  preselect ? color.withOpacity(0.05) : color.withOpacity(0.1),
+              border:
+                  Border.all(color: preselect ? color.withOpacity(0.3) : color),
+              borderRadius: const BorderRadius.all(Radius.circular(1000)),
+            ),
+          )
+        : day;
+    //return Container()
   }
 
   static Widget buildDefaultSingleSelectionTitle(BuildContext context,
@@ -242,7 +276,10 @@ class CalendarContext extends StatelessWidget {
       showDaysOfWeek: my.showDaysOfWeek ?? def.showDaysOfWeek,
       dayOfWeekBuilder: my.dayOfWeekBuilder ?? def.dayOfWeekBuilder,
       dayBuilder: my.dayBuilder ?? def.dayBuilder,
-      selectionBuilder: my.selectionBuilder ?? def.selectionBuilder,
+      singleSelectionBuilder:
+          my.singleSelectionBuilder ?? def.singleSelectionBuilder,
+      multiSelectionBuilder:
+          my.multiSelectionBuilder ?? def.multiSelectionBuilder,
       decoratorBuilder: my.decoratorBuilder ?? def.decoratorBuilder,
       horizontalSeparator: my.horizontalSeparator ?? def.horizontalSeparator,
       verticalSeparator: my.verticalSeparator ?? def.verticalSeparator,
@@ -858,7 +895,9 @@ class CalendarState extends State<Calendar> with _SelectionListenerMixin {
             ? date.month == 12 ? -11 : 1
             : type == DayType.extraHigh ? date.month == 1 ? 11 : -1 : 0);
     if (!(selection is CalendarNoneSelection)) {
-      day = parameters.selectionBuilder(
+      day = ((modifiableSelection?.isSingle ?? true)
+          ? parameters.singleSelectionBuilder
+          : parameters.multiSelectionBuilder)(
         context,
         parameters,
         date,

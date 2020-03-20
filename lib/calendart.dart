@@ -297,9 +297,12 @@ abstract class CalendarSelectionBase {
       (_canSelect == null || _canSelect(date, type, column, row));
 
   @protected
-  void select(DateTime date) {
+  void callOnDayTap(DateTime date) {
     if (onDayTap != null) onDayTap(date);
   }
+
+  @protected
+  void select(DateTime date) => callOnDayTap(date);
 
   @protected
   bool isSelected(DateTime date, DayType type, int column, int row);
@@ -352,6 +355,8 @@ abstract class CalendarSelection<T> extends CalendarSelectionBase {
   void addListener(ValueChanged<T> listener) => _listeners.add(listener);
   void removeListener(ValueChanged<T> listener) => _listeners.remove(listener);
 
+  bool get isSingle => false;
+
   T _selected;
   T get selected => _selected;
   set selected(T value) {
@@ -396,6 +401,9 @@ class CalendarSingleSelection extends CalendarSelection<DateTime> {
         );
 
   @override
+  bool get isSingle => true;
+
+  @override
   bool isSelected(DateTime date, DayType type, int column, int row) =>
       canSelect(date, type, column, row) && date == selected;
 
@@ -403,6 +411,31 @@ class CalendarSingleSelection extends CalendarSelection<DateTime> {
   void select(DateTime date) {
     selected = date;
     super.select(date);
+  }
+}
+
+class CalendarSingleOrNoneSelection extends CalendarSingleSelection {
+  CalendarSingleOrNoneSelection({
+    DateTime selected,
+    ValueChanged<DateTime> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) : super(
+          selected: selected,
+          onSelectedChanged: onSelectedChanged,
+          canSelectExtra: canSelectExtra,
+          canSelect: canSelect,
+          onDayTap: onDayTap,
+          autoClosePopupAfterSelectionChanged:
+              autoClosePopupAfterSelectionChanged,
+        );
+
+  @override
+  void select(DateTime date) {
+    selected = date == selected ? null : date;
+    callOnDayTap(date);
   }
 }
 
@@ -538,6 +571,24 @@ class CalendarSelections {
     bool autoClosePopupAfterSelectionChanged = true,
   }) =>
       CalendarSingleSelection(
+        selected: selected,
+        onSelectedChanged: onSelectedChanged,
+        canSelectExtra: canSelectExtra,
+        canSelect: canSelect,
+        onDayTap: onDayTap,
+        autoClosePopupAfterSelectionChanged:
+            autoClosePopupAfterSelectionChanged,
+      );
+
+  static CalendarSingleOrNoneSelection singleOrNone({
+    DateTime selected,
+    ValueChanged<DateTime> onSelectedChanged,
+    bool canSelectExtra = false,
+    CalendarSelectionCanSelect canSelect,
+    ValueSetter<DateTime> onDayTap,
+    bool autoClosePopupAfterSelectionChanged = true,
+  }) =>
+      CalendarSingleOrNoneSelection(
         selected: selected,
         onSelectedChanged: onSelectedChanged,
         canSelectExtra: canSelectExtra,

@@ -55,6 +55,26 @@ class _HomePageState extends State<HomePage> {
                   autoClosePopupAfterSelectionChanged:
                       autoClosePopupAfterSelectionChanged,
                 );
+        case SelectionType.singleOrNone:
+          return autoClosePopupAfterSelectionChanged == null
+              ? CalendarSelections.singleOrNone(
+                  selected: properties.selected is DateTime
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
+                )
+              : CalendarSelections.singleOrNone(
+                  selected: properties.selected is DateTime
+                      ? properties.selected
+                      : null,
+                  canSelectExtra: canSelectExtra,
+                  onSelectedChanged: (_) =>
+                      setState(() => properties.selected = _),
+                  autoClosePopupAfterSelectionChanged:
+                      autoClosePopupAfterSelectionChanged,
+                );
         case SelectionType.multi:
           return autoClosePopupAfterSelectionChanged == null
               ? CalendarSelections.multi(
@@ -237,7 +257,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-enum SelectionType { none, single, multi, range }
+enum SelectionType { none, single, singleOrNone, multi, range }
 
 class DemoItem<TProperties extends CalendarProperties>
     extends DemoItemBase<TProperties> {

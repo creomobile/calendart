@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^0.1.3
+  intl: ^0.16.1
   combos: ^1.1.6
   editors: ^0.0.3+2
   demo_items:

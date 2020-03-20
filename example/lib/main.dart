@@ -1,8 +1,12 @@
+import 'dart:math' as math;
+import 'dart:ui';
+
 import 'package:calendart/calendart.dart';
 import 'package:combos/combos.dart';
 import 'package:demo_items/demo_items.dart';
 import 'package:editors/editors.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 void main() => runApp(MyApp());
 
@@ -276,6 +280,11 @@ class DemoItem<TProperties extends CalendarProperties>
 
 class _DemoItemState<TProperties extends CalendarProperties>
     extends DemoItemStateBase<TProperties> {
+  final _colors = Iterable.generate(31)
+      .map((e) => Color((math.Random().nextDouble() * 0xFFFFFF).toInt() << 0)
+          .withOpacity(1.0))
+      .toList();
+
   @override
   DemoItem<TProperties> get widget => super.widget;
 
@@ -412,44 +421,101 @@ class _DemoItemState<TProperties extends CalendarProperties>
     final separatorHeight = properties.separatorHeight.value?.toDouble() ?? 0.0;
     final calendarContext = CalendarContext(
         parameters: CalendarParameters(
-          firstDayOfWeekIndex: properties.firstDayOfWeekIndex.value,
-          showDaysOfWeek: properties.showDaysOfWeek.value,
-          decoratorBuilder: properties.showDecorator.value
-              ? (context, date, calendar) => Container(
-                    decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.center,
-                      colors: [
-                        Colors.blueAccent,
-                        Colors.blueAccent.withOpacity(0),
-                      ],
-                      stops: [0.0, 0.5],
-                    )),
-                    child: Column(children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text('${date.month} ${date.year}',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      Expanded(child: calendar),
-                    ]),
-                  )
-              : null,
-          horizontalSeparator: separatorWidth == 0.0
-              ? const PreferredSize(
-                  preferredSize: Size.fromWidth(0), child: SizedBox())
-              : _buildHorizontalSeparator(
-                  separatorWidth, properties.customSeparators.value),
-          verticalSeparator: separatorHeight == 0.0
-              ? const PreferredSize(
-                  preferredSize: Size.fromHeight(0), child: SizedBox())
-              : _buildVerticalSeparator(
-                  separatorHeight, properties.customSeparators.value),
-          scrollDirection: properties.scrollDirection.value,
-        ),
+            firstDayOfWeekIndex: properties.firstDayOfWeekIndex.value,
+            showDaysOfWeek: properties.showDaysOfWeek.value,
+            decoratorBuilder: properties.showDecorator.value
+                ? (context, date, calendar) => Container(
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.center,
+                        colors: [
+                          Colors.blueAccent,
+                          Colors.blueAccent.withOpacity(0),
+                        ],
+                        stops: [0.0, 0.5],
+                      )),
+                      child: Column(children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text('${date.month} ${date.year}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        Expanded(child: calendar),
+                      ]),
+                    )
+                : null,
+            horizontalSeparator: separatorWidth == 0.0
+                ? const PreferredSize(
+                    preferredSize: Size.fromWidth(0), child: SizedBox())
+                : _buildHorizontalSeparator(
+                    separatorWidth, properties.customSeparators.value),
+            verticalSeparator: separatorHeight == 0.0
+                ? const PreferredSize(
+                    preferredSize: Size.fromHeight(0), child: SizedBox())
+                : _buildVerticalSeparator(
+                    separatorHeight, properties.customSeparators.value),
+            scrollDirection: properties.scrollDirection.value,
+            singleSelectionBuilder: properties.customSelection.value
+                ? (context, parameters, date, column, row, day, preselect,
+                        bool Function(DateTime date) isSelected) =>
+                    isSelected(date)
+                        ? Container(
+                            child: DefaultTextStyle(
+                                child: day,
+                                style: const TextStyle(color: Colors.white)),
+                            decoration: BoxDecoration(
+                                gradient: RadialGradient(colors: [
+                              Colors.blueAccent
+                                  .withOpacity(preselect ? 0.5 : 1.0),
+                              Colors.blueAccent.withOpacity(0.0)
+                            ])),
+                          )
+                        : day
+                : null,
+            multiSelectionBuilder: properties.customSelection.value
+                ? (context, parameters, date, column, row, day, preselect,
+                        bool Function(DateTime date) isSelected) =>
+                    isSelected(date)
+                        ? Container(
+                            child: DefaultTextStyle(
+                                child: day,
+                                style: const TextStyle(color: Colors.white)),
+                            decoration: BoxDecoration(
+                                gradient: RadialGradient(colors: [
+                              Colors.blueAccent
+                                  .withOpacity(preselect ? 0.5 : 1.0),
+                              Colors.blueAccent.withOpacity(0.0)
+                            ])),
+                          )
+                        : day
+                : null,
+            dayOfWeekBuilder: properties.customDaysOfWeek.value
+                ? (context, index) => Center(
+                        child: Text(
+                      DateFormat.E()
+                          .format(DateTime(0, 1, 2).add(Duration(days: index))),
+                      style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic),
+                    ))
+                : null,
+            dayBuilder: properties.customDays.value
+                ? (context, parameters, date, type, column, row) => Center(
+                      child: Text(date.day.toString(),
+                          style: TextStyle(
+                            color: _colors[date.day - 1],
+                            fontWeight: FontWeight.bold,
+                            decoration: type == DayType.today
+                                ? TextDecoration.underline
+                                : null,
+                          )),
+                    )
+                : null
+            ),
         child: super.buildChild());
 
     return comboProperties == null
@@ -543,6 +609,10 @@ class CalendarProperties {
       getList: () => SelectionType.values,
       value: SelectionType.single);
   final canSelectExtra = BoolEditor(title: 'Can Select Extra', value: false);
+  final customSelection = BoolEditor(title: 'Custom Selection', value: false);
+  final customDays = BoolEditor(title: 'Custom Days', value: false);
+  final customDaysOfWeek =
+      BoolEditor(title: 'Custom Days of Week', value: false);
   bool get showAutoClosePopup => false;
   final autoClosePopupAfterSelectionChanged = EnumEditor<bool>(
       title: 'Auto Close Popup After Selection Changed',
@@ -568,6 +638,9 @@ class CalendarProperties {
         scrollDirection,
         selectionType,
         canSelectExtra,
+        customSelection,
+        customDays,
+        customDaysOfWeek,
         if (showAutoClosePopup) autoClosePopupAfterSelectionChanged,
         showDaysOfWeek,
         showDecorator,

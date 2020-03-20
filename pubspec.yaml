@@ -1,6 +1,6 @@
 name: calendart
-description: Flutter calendar widget with customizable items and selection methods.
-version: 1.0.0
+description: High customizable Flutter calendar widgets with popup view and multi-columns/rows of months, multi-scroll directions, multi-selections.
+version: 1.0.0+1
 homepage: https://github.com/creomobile/calendart
 
 environment:

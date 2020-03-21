@@ -226,9 +226,7 @@ class _HomePageState extends State<HomePage> {
                           columns: properties.columns.value,
                           rows: properties.rows.value,
                           selection: _comboSelection = getSelection(properties),
-                          placeholder: const ListTile(
-                              title: Text('Calendar Combo',
-                                  style: TextStyle(color: Colors.grey))),
+                          title: 'Calendar Combo',
                           popupSize: Size(width, height),
                           onDisplayDateChanged: (date) {
                             properties.year.value = date.year;
@@ -458,6 +456,7 @@ class _DemoItemState<TProperties extends CalendarProperties>
                 : _buildVerticalSeparator(
                     separatorHeight, properties.customSeparators.value),
             scrollDirection: properties.scrollDirection.value,
+            comboTextTitlePlacement: comboProperties?.textTitlePlacement?.value,
             singleSelectionBuilder: properties.customSelection.value
                 ? (context, parameters, date, column, row, day, preselect,
                         bool Function(DateTime date) isSelected) =>
@@ -514,8 +513,7 @@ class _DemoItemState<TProperties extends CalendarProperties>
                                 : null,
                           )),
                     )
-                : null
-            ),
+                : null),
         child: super.buildChild());
 
     return comboProperties == null
@@ -564,7 +562,10 @@ class _DemoItemState<TProperties extends CalendarProperties>
     final comboEditors =
         properties is CalendarComboProperties ? properties.comboEditors : null;
 
-    return EditorsContext(
+    return Theme(
+      data: ThemeData(
+          inputDecorationTheme:
+              InputDecorationTheme(border: OutlineInputBorder())),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         shrinkWrap: true,
@@ -585,7 +586,7 @@ class _DemoItemState<TProperties extends CalendarProperties>
               ? comboEditors[index - length - 1].build()
               : editors[index].build();
         },
-        separatorBuilder: (context, index) => const SizedBox(height: 8),
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
       ),
     );
   }
@@ -655,6 +656,10 @@ class CalendarComboProperties extends CalendarProperties {
   @override
   bool get showAutoClosePopup => true;
 
+  final textTitlePlacement = EnumEditor<ComboTextTitlePlacement>(
+      title: 'Text Title Placement',
+      value: ComboTextTitlePlacement.label,
+      getList: () => ComboTextTitlePlacement.values);
   final position = EnumEditor<PopupPosition>(
       title: 'Position',
       value: PopupPosition.bottomMinMatch,
@@ -688,6 +693,7 @@ class CalendarComboProperties extends CalendarProperties {
       BoolEditor(title: 'Use Custom Popup Decorator', value: false);
 
   List<Editor> get comboEditors => [
+        textTitlePlacement,
         position,
         offsetX,
         offsetY,

@@ -56,6 +56,11 @@ typedef CalendarDecoratorBuilder = Widget Function(
 typedef SelectionTitleBuilder<TSelection> = Widget Function(
     BuildContext context, CalendarParameters parameters, TSelection selection);
 
+/// Define combo calendar text title placement
+/// [label] as [InputDecoration.labelText]
+/// [placeholder] as [InputDecoration.hintText]
+enum ComboTextTitlePlacement { label, placeholder }
+
 /// Common parameters for calendar widgets.
 class CalendarParameters {
   /// Creates common parameters for calendar widgets.
@@ -70,6 +75,7 @@ class CalendarParameters {
     this.horizontalSeparator,
     this.verticalSeparator,
     this.scrollDirection,
+    this.comboTextTitlePlacement,
     this.singleSelectionTitleBuilder,
     this.multiSelectionTitleBuilder,
     this.rangeSelectionTitleBuilder,
@@ -88,6 +94,7 @@ class CalendarParameters {
     verticalSeparator: PreferredSize(
         preferredSize: Size.fromHeight(32), child: SizedBox(height: 32)),
     scrollDirection: Axis.horizontal,
+    comboTextTitlePlacement: ComboTextTitlePlacement.label,
     singleSelectionTitleBuilder: buildDefaultSingleSelectionTitle,
     multiSelectionTitleBuilder: buildDefaultMultiSelectionTitle,
     rangeSelectionTitleBuilder: buildDefaultRangeSelectionTitle,
@@ -128,6 +135,13 @@ class CalendarParameters {
   /// Define calendars scroll direction.
   final Axis scrollDirection;
 
+  // * combo
+
+  /// Define combo calendar text title placement
+  /// [label] as [InputDecoration.labelText]
+  /// [placeholder] as [InputDecoration.hintText]
+  final ComboTextTitlePlacement comboTextTitlePlacement;
+
   /// Define combo title builder for single selections -
   /// [CalendarSingleSelection], [CalendarSingleOrNoneSelection].
   final SelectionTitleBuilder<DateTime> singleSelectionTitleBuilder;
@@ -156,6 +170,7 @@ class CalendarParameters {
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
     Axis scrollDirection,
+    ComboTextTitlePlacement comboTextTitlePlacement,
     SelectionTitleBuilder<DateTime> singleSelectionTitleBuilder,
     SelectionTitleBuilder<Set<DateTime>> multiSelectionTitleBuilder,
     SelectionTitleBuilder<DatesRange> rangeSelectionTitleBuilder,
@@ -174,6 +189,8 @@ class CalendarParameters {
         horizontalSeparator: horizontalSeparator ?? this.horizontalSeparator,
         verticalSeparator: verticalSeparator ?? this.verticalSeparator,
         scrollDirection: scrollDirection ?? this.scrollDirection,
+        comboTextTitlePlacement:
+            comboTextTitlePlacement ?? this.comboTextTitlePlacement,
         singleSelectionTitleBuilder:
             singleSelectionTitleBuilder ?? this.singleSelectionTitleBuilder,
         multiSelectionTitleBuilder:
@@ -319,6 +336,7 @@ class CalendarParameters {
   static Widget buildDefaultSelectionTitle(
           BuildContext context, CalendarParameters parameters, selected) =>
       ListTile(
+          enabled: ComboContext.of(context)?.parameters?.enabled != false,
           title: selected == null
               ? const SizedBox()
               : getSelectionTitle(context, parameters, selected));
@@ -361,6 +379,8 @@ class CalendarContext extends StatelessWidget {
       horizontalSeparator: my.horizontalSeparator ?? def.horizontalSeparator,
       verticalSeparator: my.verticalSeparator ?? def.verticalSeparator,
       scrollDirection: my.scrollDirection ?? def.scrollDirection,
+      comboTextTitlePlacement:
+          my.comboTextTitlePlacement ?? def.comboTextTitlePlacement,
       singleSelectionTitleBuilder:
           my.singleSelectionTitleBuilder ?? def.singleSelectionTitleBuilder,
       multiSelectionTitleBuilder:
@@ -1213,7 +1233,7 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
     this.onDisplayDateChanged,
     this.columns = 1,
     this.rows = 1,
-    this.placeholder,
+    this.title,
     this.popupSize = const Size.square(300),
     this.selection = const CalendarNoneSelection(),
     this.openedChanged,
@@ -1237,8 +1257,9 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
   /// Number of months by vertical.
   final int rows;
 
-  /// Widget displaying as combo child when selection is empty.
-  final Widget placeholder;
+  /// Combo text title.
+  /// See also: [CalendarParameters.comboTextTitlePlacement]
+  final String title;
 
   /// Size of popup with calendars.
   final Size popupSize;
@@ -1310,41 +1331,79 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
     final popupDecorator = comboParameters.popupDecoratorBuilder;
     final selection = widget.selection;
 
-    return Combo(
-      key: _comboKey,
-      child: widget.selection.hasSelection
-          ? parameters.selectionTitleBuilder(
-              context, parameters, (selection as CalendarSelection).selected)
-          : (widget.placeholder ?? ListTile()),
-      popupBuilder: (context, mirrored) {
-        Widget calendar = SizedBox.fromSize(
-          size: widget.popupSize,
-          child: Calendar(
-            key: _calendarKey,
-            displayDate: _displayDate,
-            onDisplayDateChanged: (date) {
-              _displayDate = date;
-              if (widget.onDisplayDateChanged != null) {
-                widget.onDisplayDateChanged(date);
-              }
-            },
-            columns: widget.columns,
-            rows: widget.rows,
-            selection: selection,
-          ),
-        );
+    return ComboContext(
+      parameters: ComboParameters(
+        childDecoratorBuilder: (context, comboParameters, opened, child) {
+          final theme = Theme.of(context);
+          final title = widget.title;
+          final titlePlacement = parameters.comboTextTitlePlacement;
+          final decoration = InputDecoration(
+                  labelText: titlePlacement == null ||
+                          titlePlacement == ComboTextTitlePlacement.label
+                      ? title
+                      : null,
+                  hintText:
+                      titlePlacement == ComboTextTitlePlacement.placeholder
+                          ? title
+                          : null,
+                  border: OutlineInputBorder())
+              .applyDefaults(theme.inputDecorationTheme)
+              .copyWith(
+                enabled: comboParameters.enabled,
+              );
+          return Stack(
+            children: [
+              Material(
+                  borderRadius:
+                      (decoration.border as OutlineInputBorder).borderRadius,
+                  child: child),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: InputDecorator(
+                      decoration: decoration,
+                      isFocused: opened,
+                      isEmpty: !widget.selection.hasSelection,
+                      expands: true),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      child: Combo(
+        key: _comboKey,
+        child: parameters.selectionTitleBuilder(
+            context, parameters, (selection as CalendarSelection).selected),
+        popupBuilder: (context, mirrored) {
+          Widget calendar = SizedBox.fromSize(
+            size: widget.popupSize,
+            child: Calendar(
+              key: _calendarKey,
+              displayDate: _displayDate,
+              onDisplayDateChanged: (date) {
+                _displayDate = date;
+                if (widget.onDisplayDateChanged != null) {
+                  widget.onDisplayDateChanged(date);
+                }
+              },
+              columns: widget.columns,
+              rows: widget.rows,
+              selection: selection,
+            ),
+          );
 
-        if (popupDecorator == null) {
-          calendar = Material(elevation: 4, child: calendar);
-        }
+          if (popupDecorator == null) {
+            calendar = Material(elevation: 4, child: calendar);
+          }
 
-        return data == null
-            ? calendar
-            : CalendarContext(parameters: parameters, child: calendar);
-      },
-      openedChanged: widget.openedChanged,
-      hoveredChanged: widget.hoveredChanged,
-      onTap: widget.onTap,
+          return data == null
+              ? calendar
+              : CalendarContext(parameters: parameters, child: calendar);
+        },
+        openedChanged: widget.openedChanged,
+        hoveredChanged: widget.hoveredChanged,
+        onTap: widget.onTap,
+      ),
     );
   }
 }

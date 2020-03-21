@@ -1,3 +1,7 @@
+## [1.0.1] - 3/21/2020.
+
+* Update combo title, use combos 1.1.7
+
 ## [1.0.0] - 3/20/2020.
 
 * Implement customizable selections + fixes

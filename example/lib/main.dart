@@ -343,73 +343,6 @@ class _CalendartDemoItemState<TProperties extends CalendarProperties>
     );
   }
 
-  Widget _buildChildDecoration(BuildContext context, ComboParameters parameters,
-          bool opened, Widget child) =>
-      Container(
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: child,
-        ),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.blueAccent),
-          borderRadius: BorderRadius.circular(16),
-        ),
-      );
-  Widget _buildPopupDecoration(
-          BuildContext context, ComboParameters parameters, Widget child) =>
-      Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blueAccent),
-            gradient: LinearGradient(colors: [
-              Colors.blueAccent.withOpacity(0.1),
-              Colors.blueAccent.withOpacity(0.0),
-              Colors.blueAccent.withOpacity(0.1),
-            ]),
-          ),
-          child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: Theme(
-                  data: ThemeData(
-                    highlightColor: Colors.blueAccent.withOpacity(0.1),
-                    splashColor: Colors.blueAccent.withOpacity(0.3),
-                  ),
-                  child: Stack(
-                    children: [
-                      child,
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.arrow_left),
-                                color: Colors.white,
-                                onPressed: () =>
-                                    widget.comboKey.currentState.dec(),
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.arrow_right),
-                                color: Colors.white,
-                                onPressed: () =>
-                                    widget.comboKey.currentState.inc(),
-                              ),
-                            ]),
-                      ),
-                    ],
-                  ))),
-        ),
-      );
-
   @override
   Widget buildChild() {
     final properties = widget.properties;
@@ -519,49 +452,16 @@ class _CalendartDemoItemState<TProperties extends CalendarProperties>
 
     return comboProperties == null
         ? calendarContext
-        : ComboContext(
-            parameters: ComboParameters(
-              position: comboProperties.position.value,
-              offset: Offset(
-                comboProperties.offsetX.value?.toDouble(),
-                comboProperties.offsetY.value?.toDouble(),
-              ),
-              autoMirror: comboProperties.autoMirror.value,
-              screenPadding: EdgeInsets.symmetric(
-                horizontal:
-                    comboProperties.screenPaddingHorizontal.value.toDouble(),
-                vertical:
-                    comboProperties.screenPaddingVertical.value.toDouble(),
-              ),
-              autoOpen: comboProperties.autoOpen.value,
-              autoClose: comboProperties.autoClose.value,
-              enabled: comboProperties.enabled.value,
-              animation: comboProperties.animation.value,
-              animationDuration: Duration(
-                  milliseconds: comboProperties.animationDurationMs.value),
-              childContentDecoratorBuilder:
-                  comboProperties.useChildDecorator.value
-                      ? _buildChildDecoration
-                      : null,
-              childDecoratorBuilder: comboProperties.useChildDecorator.value
-                  ? (context, parameters, opened, child) => Material(
-                      borderRadius: BorderRadius.circular(16),
-                      clipBehavior: Clip.antiAlias,
-                      child: child)
-                  : null,
-              popupDecoratorBuilder: comboProperties.usePopupDecorator.value
-                  ? _buildPopupDecoration
-                  : null,
-            ),
-            child: calendarContext);
+        : comboProperties.comboProperties.apply(child: calendarContext);
   }
 
   @override
   Widget buildProperties() {
     final properties = widget.properties;
     final editors = properties.editors;
-    final comboEditors =
-        properties is CalendarComboProperties ? properties.comboEditors : null;
+    final comboEditors = properties is CalendarComboProperties
+        ? properties.comboProperties.editors
+        : null;
     final allEditors = [...editors, ...(comboEditors ?? [])];
 
     return Theme(
@@ -657,53 +557,15 @@ class CalendarComboProperties extends CalendarProperties {
       title: 'Text Title Placement',
       value: ComboTextTitlePlacement.label,
       getList: () => ComboTextTitlePlacement.values);
-  final position = EnumEditor<PopupPosition>(
-      title: 'Position',
-      value: PopupPosition.bottomMinMatch,
-      getList: () => PopupPosition.values);
-  final offsetX = IntEditor(title: 'Offset X', value: 0);
-  final offsetY = IntEditor(title: 'Offset Y', value: 0);
-  final autoMirror = BoolEditor(title: 'Auto Mirror', value: true);
-  final requiredSpace = IntEditor(title: 'Required Space');
-  final screenPaddingHorizontal =
-      IntEditor(title: 'Screen Padding X', value: 16);
-  final screenPaddingVertical = IntEditor(title: 'Screen Padding Y', value: 16);
-  final autoOpen = EnumEditor<ComboAutoOpen>(
-      title: 'Auto Open',
-      value: ComboAutoOpen.tap,
-      getList: () => ComboAutoOpen.values);
-  final autoClose = EnumEditor<ComboAutoClose>(
-      title: 'Auto Close',
-      value: ComboAutoClose.tapOutsideWithChildIgnorePointer,
-      getList: () => ComboAutoClose.values);
-  final enabled = BoolEditor(title: 'Enabled', value: true);
-  final animation = EnumEditor<PopupAnimation>(
-      title: 'Animation',
-      value: PopupAnimation.fade,
-      getList: () => PopupAnimation.values);
-  final animationDurationMs = IntEditor(
-      title: 'Animation Duration',
-      value: ComboParameters.defaultAnimationDuration.inMilliseconds);
-  final useChildDecorator =
-      BoolEditor(title: 'Use Custom Child Decorator', value: false);
-  final usePopupDecorator =
-      BoolEditor(title: 'Use Custom Popup Decorator', value: false);
 
-  List<Editor> get comboEditors => [
-        textTitlePlacement,
-        position,
-        offsetX,
-        offsetY,
-        autoMirror,
-        requiredSpace,
-        screenPaddingHorizontal,
-        screenPaddingVertical,
-        autoOpen,
-        autoClose,
-        enabled,
-        animation,
-        animationDurationMs,
-        useChildDecorator,
-        usePopupDecorator,
-      ];
+  final comboProperties = combos.ComboProperties(withChildDecorator: false);
+
+  @override
+  List<Editor> get editors => [...super.editors, textTitlePlacement];
 }
+
+// extension CalendarPropertiesExtension on CalendarProperties {
+//   Widget apply({@required Widget child}) {
+//     //
+//   }
+// }

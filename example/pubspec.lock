@@ -27,7 +27,7 @@ packages:
     description:
       path: "example/"
       ref: HEAD
-      resolved-ref: e61ecdec02494ffff96811f53b82c305c8b85872
+      resolved-ref: f8de2cf1d3acbeaee19aaecd0731c99c5bde2dde
       url: "https://github.com/creomobile/combos"
     source: git
     version: "1.0.0+1"

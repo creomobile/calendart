@@ -279,191 +279,17 @@ class _CalendartDemoItem<TProperties extends CalendarProperties>
 
 class _CalendartDemoItemState<TProperties extends CalendarProperties>
     extends DemoItemStateBase<TProperties> {
-  final _colors = Iterable.generate(31)
-      .map((e) => Color((math.Random().nextDouble() * 0xFFFFFF).toInt() << 0)
-          .withOpacity(1.0))
-      .toList();
-
   @override
   _CalendartDemoItem<TProperties> get widget => super.widget;
 
-  PreferredSizeWidget _buildHorizontalSeparator(double width, bool custom) {
-    final size = Size.fromWidth(width);
-    return PreferredSize(
-      preferredSize: size,
-      child: SizedBox.fromSize(
-          size: size,
-          child: custom
-              ? Container(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.blueAccent.withOpacity(0),
-                              Colors.blueAccent,
-                              Colors.blueAccent.withOpacity(0),
-                            ]),
-                      ),
-                    ),
-                  ),
-                )
-              : null),
-    );
-  }
-
-  PreferredSizeWidget _buildVerticalSeparator(double height, bool custom) {
-    final size = Size.fromHeight(height);
-    return PreferredSize(
-      preferredSize: Size.fromHeight(height),
-      child: SizedBox.fromSize(
-          size: size,
-          child: custom
-              ? Container(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      alignment: Alignment.center,
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          Colors.blueAccent.withOpacity(0),
-                          Colors.blueAccent,
-                          Colors.blueAccent.withOpacity(0),
-                        ]),
-                      ),
-                    ),
-                  ),
-                )
-              : null),
-    );
-  }
-
   @override
-  Widget buildChild() {
-    final properties = widget.properties;
-    final comboProperties = widget.properties is CalendarComboProperties
-        ? widget.properties as CalendarComboProperties
-        : null;
-    final separatorWidth = properties.separatorWidth.value?.toDouble() ?? 0.0;
-    final separatorHeight = properties.separatorHeight.value?.toDouble() ?? 0.0;
-    final calendarContext = CalendarContext(
-        parameters: CalendarParameters(
-            firstDayOfWeekIndex: properties.firstDayOfWeekIndex.value,
-            showDaysOfWeek: properties.showDaysOfWeek.value,
-            decoratorBuilder: properties.showDecorator.value
-                ? (context, date, calendar) => Container(
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.center,
-                        colors: [
-                          Colors.blueAccent,
-                          Colors.blueAccent.withOpacity(0),
-                        ],
-                        stops: [0.0, 0.5],
-                      )),
-                      child: Column(children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text('${date.month} ${date.year}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        Expanded(child: calendar),
-                      ]),
-                    )
-                : null,
-            horizontalSeparator: separatorWidth == 0.0
-                ? const PreferredSize(
-                    preferredSize: Size.fromWidth(0), child: SizedBox())
-                : _buildHorizontalSeparator(
-                    separatorWidth, properties.customSeparators.value),
-            verticalSeparator: separatorHeight == 0.0
-                ? const PreferredSize(
-                    preferredSize: Size.fromHeight(0), child: SizedBox())
-                : _buildVerticalSeparator(
-                    separatorHeight, properties.customSeparators.value),
-            scrollDirection: properties.scrollDirection.value,
-            comboTextTitlePlacement: comboProperties?.textTitlePlacement?.value,
-            singleSelectionBuilder: properties.customSelection.value
-                ? (context, parameters, date, column, row, day, preselect,
-                        bool Function(DateTime date) isSelected) =>
-                    isSelected(date)
-                        ? Container(
-                            child: DefaultTextStyle(
-                                child: day,
-                                style: const TextStyle(color: Colors.white)),
-                            decoration: BoxDecoration(
-                                gradient: RadialGradient(colors: [
-                              Colors.blueAccent
-                                  .withOpacity(preselect ? 0.5 : 1.0),
-                              Colors.blueAccent.withOpacity(0.0)
-                            ])),
-                          )
-                        : day
-                : null,
-            multiSelectionBuilder: properties.customSelection.value
-                ? (context, parameters, date, column, row, day, preselect,
-                        bool Function(DateTime date) isSelected) =>
-                    isSelected(date)
-                        ? Container(
-                            child: DefaultTextStyle(
-                                child: day,
-                                style: const TextStyle(color: Colors.white)),
-                            decoration: BoxDecoration(
-                                gradient: RadialGradient(colors: [
-                              Colors.blueAccent
-                                  .withOpacity(preselect ? 0.5 : 1.0),
-                              Colors.blueAccent.withOpacity(0.0)
-                            ])),
-                          )
-                        : day
-                : null,
-            dayOfWeekBuilder: properties.customDaysOfWeek.value
-                ? (context, index) => Center(
-                        child: Text(
-                      DateFormat.E()
-                          .format(DateTime(0, 1, 2).add(Duration(days: index))),
-                      style: TextStyle(
-                          color: Colors.blueAccent,
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.italic),
-                    ))
-                : null,
-            dayBuilder: properties.customDays.value
-                ? (context, parameters, date, type, column, row) => Center(
-                      child: Text(date.day.toString(),
-                          style: TextStyle(
-                            color: _colors[date.day - 1],
-                            fontWeight: FontWeight.bold,
-                            decoration: type == DayType.today
-                                ? TextDecoration.underline
-                                : null,
-                          )),
-                    )
-                : null),
-        child: super.buildChild());
-
-    return comboProperties == null
-        ? calendarContext
-        : comboProperties.comboProperties.apply(child: calendarContext);
-  }
+  Widget buildChild() => widget.properties
+      .apply(child: super.buildChild(), comboKey: widget.comboKey);
 
   @override
   Widget buildProperties() {
     final properties = widget.properties;
     final editors = properties.editors;
-    final comboEditors = properties is CalendarComboProperties
-        ? properties.comboProperties.editors
-        : null;
-    final allEditors = [...editors, ...(comboEditors ?? [])];
-
     return Theme(
       data: ThemeData(
           inputDecorationTheme:
@@ -472,16 +298,9 @@ class _CalendartDemoItemState<TProperties extends CalendarProperties>
         padding: const EdgeInsets.all(16),
         shrinkWrap: true,
         physics: ClampingScrollPhysics(),
-        itemCount: allEditors.length,
-        itemBuilder: (context, index) => allEditors[index].build(),
-        separatorBuilder: (context, index) => index == editors.length
-            ? const Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Text('- Combo Properties -',
-                    style: TextStyle(
-                        color: Colors.grey, fontWeight: FontWeight.bold)),
-              )
-            : const SizedBox(height: 16),
+        itemCount: editors.length,
+        itemBuilder: (context, index) => editors[index].build(),
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
       ),
     );
   }
@@ -526,7 +345,7 @@ class CalendarProperties {
       value: 0,
       getList: () => [0, 1, 2, 3, 4, 5, 6]);
 
-  List<Editor> get editors => [
+  List<EditorsBuilder> get editors => [
         year,
         month,
         width,
@@ -561,11 +380,244 @@ class CalendarComboProperties extends CalendarProperties {
   final comboProperties = combos.ComboProperties(withChildDecorator: false);
 
   @override
-  List<Editor> get editors => [...super.editors, textTitlePlacement];
+  List<EditorsBuilder> get editors => [
+        ...super.editors,
+        textTitlePlacement,
+        const EditorsSeparator('Combo Properties'),
+        ...comboProperties.editors,
+      ];
 }
 
-// extension CalendarPropertiesExtension on CalendarProperties {
-//   Widget apply({@required Widget child}) {
-//     //
-//   }
-// }
+extension CalendarPropertiesExtension on CalendarProperties {
+  static final _colors = Iterable.generate(31)
+      .map((e) => Color((math.Random().nextDouble() * 0xFFFFFF).toInt() << 0)
+          .withOpacity(1.0))
+      .toList();
+
+  static PreferredSizeWidget _buildHorizontalSeparator(
+      double width, bool custom) {
+    final size = Size.fromWidth(width);
+    return PreferredSize(
+      preferredSize: size,
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.blueAccent.withOpacity(0),
+                              Colors.blueAccent,
+                              Colors.blueAccent.withOpacity(0),
+                            ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
+
+  static PreferredSizeWidget _buildVerticalSeparator(
+      double height, bool custom) {
+    final size = Size.fromHeight(height);
+    return PreferredSize(
+      preferredSize: Size.fromHeight(height),
+      child: SizedBox.fromSize(
+          size: size,
+          child: custom
+              ? Container(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      alignment: Alignment.center,
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Colors.blueAccent.withOpacity(0),
+                          Colors.blueAccent,
+                          Colors.blueAccent.withOpacity(0),
+                        ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
+    );
+  }
+
+  static Widget _buildPopupDecoration(
+          BuildContext context,
+          ComboParameters parameters,
+          Widget child,
+          GlobalKey<CalendarComboState> comboKey) =>
+      Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blueAccent),
+            gradient: LinearGradient(colors: [
+              Colors.blueAccent.withOpacity(0.1),
+              Colors.blueAccent.withOpacity(0.0),
+              Colors.blueAccent.withOpacity(0.1),
+            ]),
+          ),
+          child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: Theme(
+                  data: ThemeData(
+                    highlightColor: Colors.blueAccent.withOpacity(0.1),
+                    splashColor: Colors.blueAccent.withOpacity(0.3),
+                  ),
+                  child: Stack(
+                    children: [
+                      child,
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.arrow_left),
+                                color: Colors.white,
+                                onPressed: () => comboKey.currentState.dec(),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.arrow_right),
+                                color: Colors.white,
+                                onPressed: () => comboKey.currentState.inc(),
+                              ),
+                            ]),
+                      ),
+                    ],
+                  ))),
+        ),
+      );
+
+  Widget apply({
+    @required Widget child,
+    @required GlobalKey<CalendarComboState> comboKey,
+  }) {
+    final comboProperties = this is CalendarComboProperties
+        ? this as CalendarComboProperties
+        : null;
+    final separatorWidth = this.separatorWidth.value?.toDouble() ?? 0.0;
+    final separatorHeight = this.separatorHeight.value?.toDouble() ?? 0.0;
+    final calendarContext = CalendarContext(
+        parameters: CalendarParameters(
+            firstDayOfWeekIndex: firstDayOfWeekIndex.value,
+            showDaysOfWeek: showDaysOfWeek.value,
+            decoratorBuilder: showDecorator.value
+                ? (context, date, calendar) => Container(
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.center,
+                        colors: [
+                          Colors.blueAccent,
+                          Colors.blueAccent.withOpacity(0),
+                        ],
+                        stops: [0.0, 0.5],
+                      )),
+                      child: Column(children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text('${date.month} ${date.year}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        Expanded(child: calendar),
+                      ]),
+                    )
+                : null,
+            horizontalSeparator: separatorWidth == 0.0
+                ? const PreferredSize(
+                    preferredSize: Size.fromWidth(0), child: SizedBox())
+                : _buildHorizontalSeparator(
+                    separatorWidth, customSeparators.value),
+            verticalSeparator: separatorHeight == 0.0
+                ? const PreferredSize(
+                    preferredSize: Size.fromHeight(0), child: SizedBox())
+                : _buildVerticalSeparator(
+                    separatorHeight, customSeparators.value),
+            scrollDirection: scrollDirection.value,
+            comboTextTitlePlacement: comboProperties?.textTitlePlacement?.value,
+            singleSelectionBuilder: customSelection.value
+                ? (context, parameters, date, column, row, day, preselect,
+                        bool Function(DateTime date) isSelected) =>
+                    isSelected(date)
+                        ? Container(
+                            child: DefaultTextStyle(
+                                child: day,
+                                style: const TextStyle(color: Colors.white)),
+                            decoration: BoxDecoration(
+                                gradient: RadialGradient(colors: [
+                              Colors.blueAccent
+                                  .withOpacity(preselect ? 0.5 : 1.0),
+                              Colors.blueAccent.withOpacity(0.0)
+                            ])),
+                          )
+                        : day
+                : null,
+            multiSelectionBuilder: customSelection.value
+                ? (context, parameters, date, column, row, day, preselect,
+                        bool Function(DateTime date) isSelected) =>
+                    isSelected(date)
+                        ? Container(
+                            child: DefaultTextStyle(
+                                child: day,
+                                style: const TextStyle(color: Colors.white)),
+                            decoration: BoxDecoration(
+                                gradient: RadialGradient(colors: [
+                              Colors.blueAccent
+                                  .withOpacity(preselect ? 0.5 : 1.0),
+                              Colors.blueAccent.withOpacity(0.0)
+                            ])),
+                          )
+                        : day
+                : null,
+            dayOfWeekBuilder: customDaysOfWeek.value
+                ? (context, index) => Center(
+                        child: Text(
+                      DateFormat.E()
+                          .format(DateTime(0, 1, 2).add(Duration(days: index))),
+                      style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic),
+                    ))
+                : null,
+            dayBuilder: customDays.value
+                ? (context, parameters, date, type, column, row) => Center(
+                      child: Text(date.day.toString(),
+                          style: TextStyle(
+                            color: _colors[date.day - 1],
+                            fontWeight: FontWeight.bold,
+                            decoration: type == DayType.today
+                                ? TextDecoration.underline
+                                : null,
+                          )),
+                    )
+                : null),
+        child: child);
+
+    return comboProperties == null
+        ? calendarContext
+        : comboProperties.comboProperties.apply(
+            child: calendarContext,
+            popupDecoratorBuilder: (context, parameters, child) =>
+                _buildPopupDecoration(context, parameters, child, comboKey));
+  }
+}

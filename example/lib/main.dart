@@ -7,20 +7,22 @@ import 'package:demo_items/demo_items.dart';
 import 'package:editors/editors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:combos_example/main.dart' as combos;
 
-void main() => runApp(MyApp());
+void main() => runApp(_App());
 
-class MyApp extends StatelessWidget {
+class _App extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => MaterialApp(home: HomePage());
+  Widget build(BuildContext context) =>
+      MaterialApp(home: CalendartExamplePage());
 }
 
-class HomePage extends StatefulWidget {
+class CalendartExamplePage extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _CalendartExamplePageState createState() => _CalendartExamplePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _CalendartExamplePageState extends State<CalendartExamplePage> {
   final _calendarProperties = CalendarProperties();
   final _comboProperties = CalendarComboProperties();
   CalendarSelection _calendarSelection;
@@ -137,7 +139,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           Column(
             children: [
-              DemoItem<CalendarProperties>(
+              _CalendartDemoItem<CalendarProperties>(
                 properties: _calendarProperties,
                 childBuilder: (properties) {
                   final separatorWidth =
@@ -200,7 +202,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               const SizedBox(height: 16),
-              DemoItem<CalendarProperties>(
+              _CalendartDemoItem<CalendarProperties>(
                 comboKey: _comboKey,
                 properties: _comboProperties,
                 childBuilder: (properties) {
@@ -259,11 +261,9 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-enum SelectionType { none, single, singleOrNone, multi, range }
-
-class DemoItem<TProperties extends CalendarProperties>
+class _CalendartDemoItem<TProperties extends CalendarProperties>
     extends DemoItemBase<TProperties> {
-  const DemoItem({
+  const _CalendartDemoItem({
     Key key,
     this.comboKey,
     @required TProperties properties,
@@ -273,10 +273,11 @@ class DemoItem<TProperties extends CalendarProperties>
   final GlobalKey<CalendarComboState> comboKey;
 
   @override
-  _DemoItemState<TProperties> createState() => _DemoItemState<TProperties>();
+  _CalendartDemoItemState<TProperties> createState() =>
+      _CalendartDemoItemState<TProperties>();
 }
 
-class _DemoItemState<TProperties extends CalendarProperties>
+class _CalendartDemoItemState<TProperties extends CalendarProperties>
     extends DemoItemStateBase<TProperties> {
   final _colors = Iterable.generate(31)
       .map((e) => Color((math.Random().nextDouble() * 0xFFFFFF).toInt() << 0)
@@ -284,7 +285,7 @@ class _DemoItemState<TProperties extends CalendarProperties>
       .toList();
 
   @override
-  DemoItem<TProperties> get widget => super.widget;
+  _CalendartDemoItem<TProperties> get widget => super.widget;
 
   PreferredSizeWidget _buildHorizontalSeparator(double width, bool custom) {
     final size = Size.fromWidth(width);
@@ -561,6 +562,7 @@ class _DemoItemState<TProperties extends CalendarProperties>
     final editors = properties.editors;
     final comboEditors =
         properties is CalendarComboProperties ? properties.comboEditors : null;
+    final allEditors = [...editors, ...(comboEditors ?? [])];
 
     return Theme(
       data: ThemeData(
@@ -570,27 +572,22 @@ class _DemoItemState<TProperties extends CalendarProperties>
         padding: const EdgeInsets.all(16),
         shrinkWrap: true,
         physics: ClampingScrollPhysics(),
-        itemCount: editors.length +
-            (comboEditors == null ? 0 : comboEditors.length + 1),
-        itemBuilder: (context, index) {
-          final length = editors.length;
-          if (index == length) {
-            return const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('- Combo Properties -',
-                  style: TextStyle(
-                      color: Colors.grey, fontWeight: FontWeight.bold)),
-            );
-          }
-          return index > length
-              ? comboEditors[index - length - 1].build()
-              : editors[index].build();
-        },
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        itemCount: allEditors.length,
+        itemBuilder: (context, index) => allEditors[index].build(),
+        separatorBuilder: (context, index) => index == editors.length
+            ? const Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Text('- Combo Properties -',
+                    style: TextStyle(
+                        color: Colors.grey, fontWeight: FontWeight.bold)),
+              )
+            : const SizedBox(height: 16),
       ),
     );
   }
 }
+
+enum SelectionType { none, single, singleOrNone, multi, range }
 
 class CalendarProperties {
   final year = IntEditor(title: 'Year', value: DateTime.now().year);

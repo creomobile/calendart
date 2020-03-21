@@ -16,6 +16,10 @@ dependencies:
   demo_items:
     git:
       url: https://github.com/creomobile/demo_items
+  combos_example:
+    git:
+      url: https://github.com/creomobile/combos
+      path: example/
   calendart: any
 
 dependency_overrides:

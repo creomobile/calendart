@@ -7,7 +7,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "1.0.2"
+    version: "1.0.3"
   collection:
     dependency: transitive
     description:
@@ -27,7 +27,7 @@ packages:
     description:
       path: "example/"
       ref: HEAD
-      resolved-ref: "1223474663c3a7875aae739a220ef07e941971fd"
+      resolved-ref: b8e5b727d9f85bad3fe0b482ef37646cc3cec87e
       url: "https://github.com/creomobile/combos"
     source: git
     version: "1.0.0+1"
@@ -43,7 +43,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: a6a387b52010e48aca3eb0c4b7793c3897d20190
+      resolved-ref: "81a8230155f2a280d930ac35b1bfabfc112678cc"
       url: "https://github.com/creomobile/demo_items"
     source: git
     version: "0.0.1"

@@ -3,11 +3,11 @@ import 'dart:ui';
 
 import 'package:calendart/calendart.dart';
 import 'package:combos/combos.dart';
+import 'package:combos_example/main.dart' as combos;
 import 'package:demo_items/demo_items.dart';
 import 'package:editors/editors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:combos_example/main.dart' as combos;
 
 void main() => runApp(_App());
 
@@ -29,10 +29,6 @@ class _CalendartExamplePageState extends State<CalendartExamplePage> {
   CalendarSelection _comboSelection;
   GlobalKey<CalendarState> _calendarKey;
   final _comboKey = GlobalKey<CalendarComboState>();
-  double _width;
-  double _height;
-  double _separatorWidth;
-  double _separatorHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -141,48 +137,33 @@ class _CalendartExamplePageState extends State<CalendartExamplePage> {
             children: [
               _CalendartDemoItem<CalendarProperties>(
                 properties: _calendarProperties,
-                childBuilder: (properties) {
-                  final separatorWidth =
-                      properties.separatorWidth.value?.toDouble() ?? 0.0;
-                  final separatorHeight =
-                      properties.separatorHeight.value?.toDouble() ?? 0.0;
-                  final width = properties.columns.value *
-                          (properties.width.value.toDouble() + separatorWidth) -
-                      separatorWidth;
-                  final height = properties.rows.value *
-                          (properties.height.value.toDouble() +
-                              separatorHeight) -
-                      separatorHeight;
-
+                childBuilder: (properties, modifiedEditor) {
                   // update calendar widget if size changed
-                  if (width != _width ||
-                      height != _height ||
-                      separatorWidth != _separatorWidth ||
-                      separatorHeight != _separatorHeight) {
-                    _width = width;
-                    _height = height;
-                    _separatorWidth = separatorWidth;
-                    _separatorHeight = separatorHeight;
+                  if (modifiedEditor == properties.width ||
+                      modifiedEditor == properties.height ||
+                      modifiedEditor == properties.separatorWidth ||
+                      modifiedEditor == properties.separatorHeight ||
+                      modifiedEditor == properties.columns ||
+                      modifiedEditor == properties.rows) {
                     _calendarKey = GlobalKey<CalendarState>();
                   }
+
                   return Row(
                     children: [
-                      ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxWidth: width, maxHeight: height),
-                        child: Calendar(
-                          key: _calendarKey,
-                          displayDate: DateTime(
-                              properties.year.value, properties.month.value),
-                          columns: properties.columns.value,
-                          rows: properties.rows.value,
-                          selection: _calendarSelection =
-                              getSelection(properties),
-                          onDisplayDateChanged: (date) {
-                            properties.year.value = date.year;
-                            properties.month.value = date.month;
-                          },
-                        ),
+                      Calendar(
+                        key: _calendarKey,
+                        displayDate: DateTime(
+                            properties.year.value, properties.month.value),
+                        columns: properties.columns.value,
+                        rows: properties.rows.value,
+                        selection: _calendarSelection =
+                            getSelection(properties),
+                        onDisplayDateChanged: (date) {
+                          properties.year.value = date.year;
+                          properties.month.value = date.month;
+                        },
+                        monthSize: Size(properties.width.value.toDouble(),
+                            properties.height.value.toDouble()),
                       ),
                       const SizedBox(width: 16),
                       IconButton(
@@ -205,53 +186,43 @@ class _CalendartExamplePageState extends State<CalendartExamplePage> {
               _CalendartDemoItem<CalendarProperties>(
                 controllerHolder: ControllerHolder(_comboKey),
                 properties: _comboProperties,
-                childBuilder: (properties) {
-                  final separatorWidth =
-                      properties.separatorWidth.value?.toDouble() ?? 0.0;
-                  final separatorHeight =
-                      properties.separatorHeight.value?.toDouble() ?? 0.0;
-                  final width = properties.columns.value *
-                          (properties.width.value.toDouble() + separatorWidth) -
-                      separatorWidth;
-                  final height = properties.rows.value *
-                          (properties.height.value.toDouble() +
-                              separatorHeight) -
-                      separatorHeight;
-                  return Row(
-                    children: [
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 300),
-                        child: CalendarCombo(
-                          key: _comboKey,
-                          displayDate: DateTime(
-                              properties.year.value, properties.month.value),
-                          columns: properties.columns.value,
-                          rows: properties.rows.value,
-                          selection: _comboSelection = getSelection(properties),
-                          title: 'Calendar Combo',
-                          popupSize: Size(width, height),
-                          onDisplayDateChanged: (date) {
-                            properties.year.value = date.year;
-                            properties.month.value = date.month;
-                          },
+                childBuilder: (properties, modifiedEditor) => Row(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: 300),
+                      child: CalendarCombo(
+                        key: _comboKey,
+                        displayDate: DateTime(
+                            properties.year.value, properties.month.value),
+                        columns: properties.columns.value,
+                        rows: properties.rows.value,
+                        selection: _comboSelection = getSelection(properties),
+                        title: 'Calendar Combo',
+                        monthSize: Size(
+                          properties.width.value.toDouble(),
+                          properties.height.value.toDouble(),
                         ),
+                        onDisplayDateChanged: (date) {
+                          properties.year.value = date.year;
+                          properties.month.value = date.month;
+                        },
                       ),
-                      const SizedBox(width: 16),
-                      IconButton(
-                        icon: Icon(Icons.clear),
-                        color: Colors.blueAccent,
-                        tooltip: 'Clear Selection',
-                        onPressed: _comboSelection?.hasSelection == true
-                            ? () {
-                                if (_comboSelection is CalendarSelection) {
-                                  _comboSelection.clear();
-                                }
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: Icon(Icons.clear),
+                      color: Colors.blueAccent,
+                      tooltip: 'Clear Selection',
+                      onPressed: _comboSelection?.hasSelection == true
+                          ? () {
+                              if (_comboSelection is CalendarSelection) {
+                                _comboSelection.clear();
                               }
-                            : null,
-                      )
-                    ],
-                  );
-                },
+                            }
+                          : null,
+                    )
+                  ],
+                ),
               ),
             ],
           ),

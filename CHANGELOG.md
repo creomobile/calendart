@@ -1,3 +1,7 @@
+## [1.0.3] - 3/22/2020.
+
+* Implement 'monthSize' calendar property
+
 ## [1.0.2] - 3/22/2020.
 
 * Implement calendar controllers

@@ -931,6 +931,7 @@ class Calendar extends StatefulWidget implements _Selectable {
     this.columns = 1,
     this.rows = 1,
     this.selection = const CalendarNoneSelection(),
+    this.monthSize = const Size.square(300),
   })  : assert(columns > 0),
         assert(rows > 0),
         assert(selection != null),
@@ -951,6 +952,11 @@ class Calendar extends StatefulWidget implements _Selectable {
   /// Determines dates selection method.
   @override
   final CalendarSelectionBase selection;
+
+  /// Determine the size of one month of the calendar.
+  /// If null, calendar will be layouted at the whole
+  /// available area
+  final Size monthSize;
 
   @override
   CalendarState createState() => CalendarState(displayDate);
@@ -1093,22 +1099,24 @@ class CalendarState extends State<Calendar>
     final parameters = CalendarContext.of(context)?.parameters ??
         CalendarParameters.defaultParameters;
     _scrollDirection = parameters.scrollDirection;
-    return LayoutBuilder(builder: (context, constrants) {
-      final horizontalSeparator = parameters.horizontalSeparator;
-      final verticalSeparator = parameters.verticalSeparator;
-      final separatorWidth = horizontalSeparator?.preferredSize?.width ?? 0.0;
-      final separatorHeight = verticalSeparator?.preferredSize?.height ?? 0.0;
 
-      final scrollDirection = parameters.scrollDirection;
-      final horizontal = scrollDirection == Axis.horizontal;
+    final horizontalSeparator = parameters.horizontalSeparator;
+    final verticalSeparator = parameters.verticalSeparator;
+    final separatorWidth = horizontalSeparator?.preferredSize?.width ?? 0.0;
+    final separatorHeight = verticalSeparator?.preferredSize?.height ?? 0.0;
+    final scrollDirection = parameters.scrollDirection;
+    final horizontal = scrollDirection == Axis.horizontal;
+    final columns = widget.columns;
+    final rows = widget.rows;
 
+    final calendar = LayoutBuilder(builder: (context, constrants) {
       final maxWidth =
           constrants.maxWidth + (horizontal ? separatorWidth : 0.0);
       final maxHeight =
           constrants.maxHeight + (!horizontal ? separatorHeight : 0.0);
 
-      _calendarWidth = maxWidth / widget.columns;
-      _calendarHeight = maxHeight / widget.rows;
+      _calendarWidth = maxWidth / columns;
+      _calendarHeight = maxHeight / rows;
 
       return NotificationListener<ScrollEndNotification>(
         onNotification: (_) {
@@ -1153,12 +1161,10 @@ class CalendarState extends State<Calendar>
                   child: calendar);
             }
 
-            var calendars =
-                Iterable.generate(horizontal ? widget.rows : widget.columns)
-                    .map((_) => build(
-                        horizontal ? index + _ * widget.columns : index,
-                        horizontal ? 0 : _))
-                    .toList();
+            var calendars = Iterable.generate(horizontal ? rows : columns)
+                .map((_) => build(horizontal ? index + _ * columns : index,
+                    horizontal ? 0 : _))
+                .toList();
             if (calendars.length == 1) return calendars[0];
 
             final separator = horizontal
@@ -1191,6 +1197,18 @@ class CalendarState extends State<Calendar>
         ),
       );
     });
+
+    final monthSize = widget.monthSize;
+    return monthSize == null
+        ? calendar
+        : ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth:
+                  columns * (monthSize.width + separatorWidth) - separatorWidth,
+              maxHeight:
+                  rows * (monthSize.height + separatorHeight) - separatorHeight,
+            ),
+            child: calendar);
   }
 
   @override
@@ -1245,15 +1263,15 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
     this.columns = 1,
     this.rows = 1,
     this.title,
-    this.popupSize = const Size.square(300),
     this.selection = const CalendarNoneSelection(),
+    this.monthSize = const Size.square(300),
     this.openedChanged,
     this.hoveredChanged,
     this.onTap,
   })  : assert(columns > 0),
         assert(rows > 0),
         assert(selection != null),
-        assert(popupSize != null),
+        assert(monthSize != null),
         super(key: key);
 
   /// First month of calendars set.
@@ -1272,12 +1290,12 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
   /// See also: [CalendarParameters.comboTextTitlePlacement]
   final String title;
 
-  /// Size of popup with calendars.
-  final Size popupSize;
-
   /// Determines dates selection method.
   @override
   final CalendarSelectionBase selection;
+
+  /// Determine the size of one month of the calendar.
+  final Size monthSize;
 
   /// Callbacks when the popup is opening or closing
   final ValueChanged<bool> openedChanged;
@@ -1317,7 +1335,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
             widget.displayDate != _displayDate) ||
         widget.columns != oldWidget.columns ||
         widget.rows != oldWidget.rows ||
-        widget.popupSize != oldWidget.popupSize) {
+        widget.monthSize != oldWidget.monthSize) {
       setState(() => _displayDate = widget.displayDate);
     }
   }
@@ -1396,21 +1414,19 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
         child: parameters.selectionTitleBuilder(
             context, parameters, (selection as CalendarSelection).selected),
         popupBuilder: (context, mirrored) {
-          Widget calendar = SizedBox.fromSize(
-            size: widget.popupSize,
-            child: Calendar(
-              key: _calendarKey,
-              displayDate: _displayDate,
-              onDisplayDateChanged: (date) {
-                _displayDate = date;
-                if (widget.onDisplayDateChanged != null) {
-                  widget.onDisplayDateChanged(date);
-                }
-              },
-              columns: widget.columns,
-              rows: widget.rows,
-              selection: selection,
-            ),
+          Widget calendar = Calendar(
+            key: _calendarKey,
+            displayDate: _displayDate,
+            onDisplayDateChanged: (date) {
+              _displayDate = date;
+              if (widget.onDisplayDateChanged != null) {
+                widget.onDisplayDateChanged(date);
+              }
+            },
+            columns: widget.columns,
+            rows: widget.rows,
+            selection: selection,
+            monthSize: widget.monthSize,
           );
 
           if (popupDecorator == null) {

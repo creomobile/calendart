@@ -7,7 +7,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "1.0.1"
+    version: "1.0.2"
   collection:
     dependency: transitive
     description:
@@ -21,13 +21,13 @@ packages:
       name: combos
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.1.7+1"
+    version: "1.1.7+2"
   combos_example:
     dependency: "direct main"
     description:
       path: "example/"
       ref: HEAD
-      resolved-ref: b0f68f7cfd048f5a80dbdcc065c942b78001db61
+      resolved-ref: "1223474663c3a7875aae739a220ef07e941971fd"
       url: "https://github.com/creomobile/combos"
     source: git
     version: "1.0.0+1"
@@ -43,7 +43,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "316cf0f5f96836a2ee9528d4c546f4f2c849d4e5"
+      resolved-ref: a6a387b52010e48aca3eb0c4b7793c3897d20190
       url: "https://github.com/creomobile/demo_items"
     source: git
     version: "0.0.1"

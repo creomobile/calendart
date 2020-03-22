@@ -203,7 +203,7 @@ class _CalendartExamplePageState extends State<CalendartExamplePage> {
               ),
               const SizedBox(height: 16),
               _CalendartDemoItem<CalendarProperties>(
-                comboKey: _comboKey,
+                controllerHolder: ControllerHolder(_comboKey),
                 properties: _comboProperties,
                 childBuilder: (properties) {
                   final separatorWidth =
@@ -265,12 +265,12 @@ class _CalendartDemoItem<TProperties extends CalendarProperties>
     extends DemoItemBase<TProperties> {
   const _CalendartDemoItem({
     Key key,
-    this.comboKey,
+    this.controllerHolder,
     @required TProperties properties,
     @required ChildBuilder<TProperties> childBuilder,
   }) : super(key: key, properties: properties, childBuilder: childBuilder);
 
-  final GlobalKey<CalendarComboState> comboKey;
+  final ControllerHolder<CalendarComboController> controllerHolder;
 
   @override
   _CalendartDemoItemState<TProperties> createState() =>
@@ -283,8 +283,8 @@ class _CalendartDemoItemState<TProperties extends CalendarProperties>
   _CalendartDemoItem<TProperties> get widget => super.widget;
 
   @override
-  Widget buildChild() => widget.properties
-      .apply(child: super.buildChild(), comboKey: widget.comboKey);
+  Widget buildChild() => widget.properties.apply(
+      child: super.buildChild(), controllerHolder: widget.controllerHolder);
 
   @override
   Widget buildProperties() {
@@ -456,7 +456,7 @@ extension CalendarPropertiesExtension on CalendarProperties {
           BuildContext context,
           ComboParameters parameters,
           Widget child,
-          GlobalKey<CalendarComboState> comboKey) =>
+          ControllerHolder<CalendarComboController> controllerHolder) =>
       Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(16),
@@ -491,12 +491,14 @@ extension CalendarPropertiesExtension on CalendarProperties {
                               IconButton(
                                 icon: Icon(Icons.arrow_left),
                                 color: Colors.white,
-                                onPressed: () => comboKey.currentState.dec(),
+                                onPressed: () =>
+                                    controllerHolder.controller.dec(),
                               ),
                               IconButton(
                                 icon: Icon(Icons.arrow_right),
                                 color: Colors.white,
-                                onPressed: () => comboKey.currentState.inc(),
+                                onPressed: () =>
+                                    controllerHolder.controller.inc(),
                               ),
                             ]),
                       ),
@@ -507,7 +509,7 @@ extension CalendarPropertiesExtension on CalendarProperties {
 
   Widget apply({
     @required Widget child,
-    @required GlobalKey<CalendarComboState> comboKey,
+    @required ControllerHolder<CalendarComboController> controllerHolder,
   }) {
     final comboProperties = this is CalendarComboProperties
         ? this as CalendarComboProperties
@@ -618,6 +620,7 @@ extension CalendarPropertiesExtension on CalendarProperties {
         : comboProperties.comboProperties.apply(
             child: calendarContext,
             popupDecoratorBuilder: (context, parameters, child) =>
-                _buildPopupDecoration(context, parameters, child, comboKey));
+                _buildPopupDecoration(
+                    context, parameters, child, controllerHolder));
   }
 }

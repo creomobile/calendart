@@ -956,9 +956,20 @@ class Calendar extends StatefulWidget implements _Selectable {
   CalendarState createState() => CalendarState(displayDate);
 }
 
+/// Allows to paginate months by [inc], [dec] methods.
+abstract class CalendarController {
+  /// Move scroll forward by one position of months.
+  void inc();
+
+  /// Move scroll backward by one position of months.
+  void dec();
+}
+
 /// State for a [Calendar].
-/// Can paginate months by [inc], [dec] methods.
-class CalendarState extends State<Calendar> with _SelectionListenerMixin {
+/// Implements [CalendarController].
+class CalendarState extends State<Calendar>
+    with _SelectionListenerMixin
+    implements CalendarController {
   CalendarState(DateTime displayDate)
       : _displayDate = _getMonthDate(displayDate);
   static const _itemsBefore = 2;
@@ -1004,10 +1015,10 @@ class CalendarState extends State<Calendar> with _SelectionListenerMixin {
       _controller.animateTo(_controller.position.pixels + offset,
           duration: const Duration(milliseconds: 300), curve: Curves.bounceOut);
 
-  /// Move scroll forward by one position of months.
+  @override
   void inc() => _move(_lenght);
 
-  /// Move scroll backward by one position of months.
+  @override
   void dec() => _move(-_lenght);
 
   DateTime _getDate(int row, [int column = 0]) {
@@ -1283,10 +1294,17 @@ class CalendarCombo extends StatefulWidget implements _Selectable {
   CalendarComboState createState() => CalendarComboState(displayDate);
 }
 
+/// Allows to [open] and to [close] the combo popup,
+/// and determines if the popup is [opened].
+/// Allows to paginate months by [inc], [dec] methods.
+abstract class CalendarComboController
+    implements CalendarController, ComboController {}
+
 /// State for a [CalendarCombo].
-/// Can [open] and [close] popups, paginate months by [inc], [dec] methods.
+/// Implements [CalendarComboController].
 class CalendarComboState<TSelection> extends State<CalendarCombo>
-    with _SelectionListenerMixin {
+    with _SelectionListenerMixin
+    implements CalendarComboController {
   CalendarComboState(this._displayDate);
   final _comboKey = GlobalKey<ComboState>();
   final _calendarKey = GlobalKey<CalendarState>();
@@ -1304,16 +1322,19 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
     }
   }
 
-  /// Opens the popup.
+  @override
+  bool get opened => _comboKey.currentState?.opened == true;
+
+  @override
   void open() => _comboKey.currentState?.open();
 
-  /// Closes the popup.
+  @override
   void close() => _comboKey.currentState?.close();
 
-  /// Move scroll forward by one position of months.
+  @override
   void inc() => _calendarKey.currentState.inc();
 
-  /// Move scroll backward by one position of months.
+  @override
   void dec() => _calendarKey.currentState.dec();
 
   @override

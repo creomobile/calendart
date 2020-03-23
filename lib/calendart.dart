@@ -992,6 +992,8 @@ abstract class CalendarController {
 
   /// Move scroll backward by one position of months.
   void dec();
+
+  void setDisplayDate(DateTime date);
 }
 
 /// State for a [Calendar].
@@ -1029,16 +1031,9 @@ class CalendarState extends State<Calendar>
             _scrollDirection ||
         oldWidget.columns != widget.columns ||
         oldWidget.rows != widget.rows) {
-      _reset(displayDate);
+      setDisplayDate(displayDate);
     }
   }
-
-  void _reset(DateTime date) => setState(() {
-        _controller.dispose();
-        _controller = null;
-        _listKey = null;
-        _displayDate = date;
-      });
 
   void _move(double offset) =>
       _controller.animateTo(_controller.position.pixels + offset,
@@ -1049,6 +1044,14 @@ class CalendarState extends State<Calendar>
 
   @override
   void dec() => _move(-_lenght);
+
+  @override
+  void setDisplayDate(DateTime date) => setState(() {
+        _controller.dispose();
+        _controller = null;
+        _listKey = null;
+        _displayDate = date;
+      });
 
   DateTime _getDate(int row, [int column = 0]) {
     final crossFactor =
@@ -1145,7 +1148,7 @@ class CalendarState extends State<Calendar>
         onNotification: (_) {
           final date = _getDate(_controller.position.pixels ~/ _lenght);
           if (date != _displayDate) {
-            _reset(date);
+            setDisplayDate(date);
             if (widget.onDisplayDateChanged != null) {
               widget.onDisplayDateChanged(date);
             }
@@ -1388,6 +1391,9 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
 
   @override
   void dec() => _calendarKey.currentState.dec();
+
+  @override
+  void setDisplayDate(DateTime date) => setState(() => _displayDate = date);
 
   @override
   void didSelectionChanged(_) {

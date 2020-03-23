@@ -1,3 +1,7 @@
+## [1.0.4] - 3/23/2020.
+
+* Implement month/calendar decorators, fix in popup calendar selection
+
 ## [1.0.3] - 3/22/2020.
 
 * Implement 'monthSize' calendar property

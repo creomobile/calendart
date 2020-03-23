@@ -46,12 +46,23 @@ typedef SelectionBuilder = Widget Function(
     bool preselect,
     bool Function(DateTime date) isSelected);
 
+/// Signature for month decorator builder.
+/// [context] - current build context.
+/// [displayDate] - displaying calendar month.
+/// [calendar] - calendar widget.
+typedef MonthDecoratorBuilder = Widget Function(BuildContext context,
+    CalendarParameters parameters, DateTime displayDate, Widget month);
+
 /// Signature for calendar decorator builder.
 /// [context] - current build context.
 /// [displayDate] - displaying calendar month.
 /// [calendar] - calendar widget.
 typedef CalendarDecoratorBuilder = Widget Function(
-    BuildContext context, DateTime displayDate, Widget calendar);
+    BuildContext context,
+    CalendarParameters parameters,
+    DateTime displayDate,
+    Widget calendar,
+    CalendarController controller);
 
 /// Signature for combo calendar title builder
 typedef SelectionTitleBuilder<TSelection> = Widget Function(
@@ -72,7 +83,8 @@ class CalendarParameters {
     this.dayBuilder,
     this.singleSelectionBuilder,
     this.multiSelectionBuilder,
-    this.decoratorBuilder,
+    this.monthDecoratorBuilder,
+    this.calendarDecoratorBuilder,
     this.horizontalSeparator,
     this.verticalSeparator,
     this.scrollDirection,
@@ -124,8 +136,11 @@ class CalendarParameters {
   /// [CalendarMultiSelection], [CalendarRangeSelection].
   final SelectionBuilder multiSelectionBuilder;
 
+  /// Define decorator builder for month widget of calendar.
+  final MonthDecoratorBuilder monthDecoratorBuilder;
+
   /// Define decorator builder for whole calendar.
-  final CalendarDecoratorBuilder decoratorBuilder;
+  final CalendarDecoratorBuilder calendarDecoratorBuilder;
 
   /// Widget for displaying horizontal separator between calendars.
   final PreferredSizeWidget horizontalSeparator;
@@ -167,7 +182,8 @@ class CalendarParameters {
     DayBuilder dayBuilder,
     SelectionBuilder singleSelectionBuilder,
     SelectionBuilder multiSelectionBuilder,
-    CalendarDecoratorBuilder decoratorBuilder,
+    MonthDecoratorBuilder monthDecoratorBuilder,
+    CalendarDecoratorBuilder calendarDecoratorBuilder,
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
     Axis scrollDirection,
@@ -186,7 +202,10 @@ class CalendarParameters {
             singleSelectionBuilder ?? this.singleSelectionBuilder,
         multiSelectionBuilder:
             multiSelectionBuilder ?? this.multiSelectionBuilder,
-        decoratorBuilder: decoratorBuilder ?? this.decoratorBuilder,
+        monthDecoratorBuilder:
+            monthDecoratorBuilder ?? this.monthDecoratorBuilder,
+        calendarDecoratorBuilder:
+            calendarDecoratorBuilder ?? this.calendarDecoratorBuilder,
         horizontalSeparator: horizontalSeparator ?? this.horizontalSeparator,
         verticalSeparator: verticalSeparator ?? this.verticalSeparator,
         scrollDirection: scrollDirection ?? this.scrollDirection,
@@ -376,7 +395,10 @@ class CalendarContext extends StatelessWidget {
           my.singleSelectionBuilder ?? def.singleSelectionBuilder,
       multiSelectionBuilder:
           my.multiSelectionBuilder ?? def.multiSelectionBuilder,
-      decoratorBuilder: my.decoratorBuilder ?? def.decoratorBuilder,
+      monthDecoratorBuilder:
+          my.monthDecoratorBuilder ?? def.monthDecoratorBuilder,
+      calendarDecoratorBuilder:
+          my.calendarDecoratorBuilder ?? def.calendarDecoratorBuilder,
       horizontalSeparator: my.horizontalSeparator ?? def.horizontalSeparator,
       verticalSeparator: my.verticalSeparator ?? def.verticalSeparator,
       scrollDirection: my.scrollDirection ?? def.scrollDirection,
@@ -1110,7 +1132,7 @@ class CalendarState extends State<Calendar>
     final columns = widget.columns;
     final rows = widget.rows;
 
-    final calendar = LayoutBuilder(builder: (context, constrants) {
+    Widget calendar = LayoutBuilder(builder: (context, constrants) {
       final maxWidth =
           constrants.maxWidth + (horizontal ? separatorWidth : 0.0);
       final maxHeight =
@@ -1144,8 +1166,9 @@ class CalendarState extends State<Calendar>
                 displayDate: date,
                 dayBuilder: buildDay,
               );
-              if (parameters.decoratorBuilder != null) {
-                calendar = parameters.decoratorBuilder(context, date, calendar);
+              if (parameters.monthDecoratorBuilder != null) {
+                calendar = parameters.monthDecoratorBuilder(
+                    context, parameters, date, calendar);
               }
               final separator =
                   horizontal ? horizontalSeparator : verticalSeparator;
@@ -1198,6 +1221,12 @@ class CalendarState extends State<Calendar>
         ),
       );
     });
+
+    final decoratorBuilder = parameters.calendarDecoratorBuilder;
+    if (decoratorBuilder != null) {
+      calendar =
+          decoratorBuilder(context, parameters, _displayDate, calendar, this);
+    }
 
     final monthSize = widget.monthSize;
     return monthSize == null

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:calendart/calendart.dart';
-import 'package:combos/combos.dart';
 import 'package:combos_example/main.dart' as combos;
 import 'package:demo_items/demo_items.dart';
 import 'package:editors/editors.dart';
@@ -184,7 +183,6 @@ class _CalendartExamplePageState extends State<CalendartExamplePage> {
               ),
               const SizedBox(height: 16),
               _CalendartDemoItem<CalendarProperties>(
-                controllerHolder: ControllerHolder(_comboKey),
                 properties: _comboProperties,
                 childBuilder: (properties, modifiedEditor) => Row(
                   children: [
@@ -236,12 +234,9 @@ class _CalendartDemoItem<TProperties extends CalendarProperties>
     extends DemoItemBase<TProperties> {
   const _CalendartDemoItem({
     Key key,
-    this.controllerHolder,
     @required TProperties properties,
     @required ChildBuilder<TProperties> childBuilder,
   }) : super(key: key, properties: properties, childBuilder: childBuilder);
-
-  final ControllerHolder<CalendarComboController> controllerHolder;
 
   @override
   _CalendartDemoItemState<TProperties> createState() =>
@@ -254,8 +249,7 @@ class _CalendartDemoItemState<TProperties extends CalendarProperties>
   _CalendartDemoItem<TProperties> get widget => super.widget;
 
   @override
-  Widget buildChild() => widget.properties.apply(
-      child: super.buildChild(), controllerHolder: widget.controllerHolder);
+  Widget buildChild() => widget.properties.apply(child: super.buildChild());
 
   @override
   Widget buildProperties() {
@@ -307,7 +301,10 @@ class CalendarProperties {
       getList: () => [null, true, false],
       value: null);
   final showDaysOfWeek = BoolEditor(title: 'Show Days of Week', value: true);
-  final showDecorator = BoolEditor(title: 'Show Custom Decorator', value: true);
+  final showMonthDecorator =
+      BoolEditor(title: 'Show Month Decorator', value: true);
+  final showCalendarDecorator =
+      BoolEditor(title: 'Show Calendar Decorator', value: true);
   final separatorWidth = IntEditor(title: 'Separator Width', value: 32);
   final separatorHeight = IntEditor(title: 'Separator Height', value: 32);
   final customSeparators = BoolEditor(title: 'Custom Separators', value: true);
@@ -331,7 +328,8 @@ class CalendarProperties {
         customDaysOfWeek,
         if (showAutoClosePopup) autoClosePopupAfterSelectionChanged,
         showDaysOfWeek,
-        showDecorator,
+        showMonthDecorator,
+        showCalendarDecorator,
         separatorWidth,
         separatorHeight,
         customSeparators,
@@ -423,65 +421,35 @@ extension CalendarPropertiesExtension on CalendarProperties {
     );
   }
 
-  static Widget _buildPopupDecoration(
+  static Widget _buildCalendarDecoration(
           BuildContext context,
-          ComboParameters parameters,
-          Widget child,
-          ControllerHolder<CalendarComboController> controllerHolder) =>
-      Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blueAccent),
-            gradient: LinearGradient(colors: [
-              Colors.blueAccent.withOpacity(0.1),
-              Colors.blueAccent.withOpacity(0.0),
-              Colors.blueAccent.withOpacity(0.1),
-            ]),
+          CalendarParameters parameters,
+          DateTime displayDate,
+          Widget calendar,
+          CalendarController controller) =>
+      Stack(
+        children: [
+          calendar,
+          Positioned(
+            left: 16,
+            right: 16,
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                      icon: Icon(Icons.arrow_left),
+                      color: Colors.white,
+                      onPressed: () => controller.dec()),
+                  IconButton(
+                      icon: Icon(Icons.arrow_right),
+                      color: Colors.white,
+                      onPressed: () => controller.inc()),
+                ]),
           ),
-          child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: Theme(
-                  data: ThemeData(
-                    highlightColor: Colors.blueAccent.withOpacity(0.1),
-                    splashColor: Colors.blueAccent.withOpacity(0.3),
-                  ),
-                  child: Stack(
-                    children: [
-                      child,
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.arrow_left),
-                                color: Colors.white,
-                                onPressed: () =>
-                                    controllerHolder.controller.dec(),
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.arrow_right),
-                                color: Colors.white,
-                                onPressed: () =>
-                                    controllerHolder.controller.inc(),
-                              ),
-                            ]),
-                      ),
-                    ],
-                  ))),
-        ),
+        ],
       );
 
-  Widget apply({
-    @required Widget child,
-    @required ControllerHolder<CalendarComboController> controllerHolder,
-  }) {
+  Widget apply({@required Widget child}) {
     final comboProperties = this is CalendarComboProperties
         ? this as CalendarComboProperties
         : null;
@@ -491,8 +459,8 @@ extension CalendarPropertiesExtension on CalendarProperties {
         parameters: CalendarParameters(
             firstDayOfWeekIndex: firstDayOfWeekIndex.value,
             showDaysOfWeek: showDaysOfWeek.value,
-            decoratorBuilder: showDecorator.value
-                ? (context, date, calendar) => Container(
+            monthDecoratorBuilder: showMonthDecorator.value
+                ? (context, parameters, date, calendar) => Container(
                       decoration: BoxDecoration(
                           gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -515,6 +483,8 @@ extension CalendarPropertiesExtension on CalendarProperties {
                       ]),
                     )
                 : null,
+            calendarDecoratorBuilder:
+                showCalendarDecorator.value ? _buildCalendarDecoration : null,
             horizontalSeparator: separatorWidth == 0.0
                 ? const PreferredSize(
                     preferredSize: Size.fromWidth(0), child: SizedBox())
@@ -588,10 +558,6 @@ extension CalendarPropertiesExtension on CalendarProperties {
 
     return comboProperties == null
         ? calendarContext
-        : comboProperties.comboProperties.apply(
-            child: calendarContext,
-            popupDecoratorBuilder: (context, parameters, child) =>
-                _buildPopupDecoration(
-                    context, parameters, child, controllerHolder));
+        : comboProperties.comboProperties.apply(child: calendarContext);
   }
 }

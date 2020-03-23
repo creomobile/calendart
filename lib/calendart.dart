@@ -1393,8 +1393,8 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
           return Stack(
             children: [
               Material(
-                  borderRadius:
-                      (decoration.border as OutlineInputBorder).borderRadius,
+                  borderRadius: (decoration.enabledBorder as OutlineInputBorder)
+                      ?.borderRadius,
                   child: child),
               Positioned.fill(
                 child: IgnorePointer(

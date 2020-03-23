@@ -1,5 +1,6 @@
 library calendart;
 
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:combos/combos.dart';
@@ -1327,6 +1328,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
   final _comboKey = GlobalKey<ComboState>();
   final _calendarKey = GlobalKey<CalendarState>();
   DateTime _displayDate;
+  final _selections = StreamController<CalendarSelectionBase>.broadcast();
 
   @override
   void didUpdateWidget(CalendarCombo oldWidget) {
@@ -1337,6 +1339,9 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
         widget.rows != oldWidget.rows ||
         widget.monthSize != oldWidget.monthSize) {
       setState(() => _displayDate = widget.displayDate);
+    }
+    if (widget.selection != oldWidget.selection) {
+      _selections.add(widget.selection);
     }
   }
 
@@ -1414,20 +1419,23 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
         child: parameters.selectionTitleBuilder(
             context, parameters, (selection as CalendarSelection).selected),
         popupBuilder: (context, mirrored) {
-          Widget calendar = Calendar(
-            key: _calendarKey,
-            displayDate: _displayDate,
-            onDisplayDateChanged: (date) {
-              _displayDate = date;
-              if (widget.onDisplayDateChanged != null) {
-                widget.onDisplayDateChanged(date);
-              }
-            },
-            columns: widget.columns,
-            rows: widget.rows,
-            selection: selection,
-            monthSize: widget.monthSize,
-          );
+          Widget calendar = StreamBuilder<CalendarSelectionBase>(
+              initialData: widget.selection,
+              stream: _selections.stream,
+              builder: (context, snapshot) => Calendar(
+                    key: _calendarKey,
+                    displayDate: _displayDate,
+                    onDisplayDateChanged: (date) {
+                      _displayDate = date;
+                      if (widget.onDisplayDateChanged != null) {
+                        widget.onDisplayDateChanged(date);
+                      }
+                    },
+                    columns: widget.columns,
+                    rows: widget.rows,
+                    selection: snapshot.data,
+                    monthSize: widget.monthSize,
+                  ));
 
           if (popupDecorator == null) {
             calendar = Material(elevation: 4, child: calendar);
@@ -1442,5 +1450,11 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
         onTap: widget.onTap,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _selections.close();
   }
 }

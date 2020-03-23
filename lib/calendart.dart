@@ -1393,12 +1393,15 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
   void dec() => _calendarKey.currentState.dec();
 
   @override
-  void setDisplayDate(DateTime date) => setState(() => _displayDate = date);
+  void setDisplayDate(DateTime date) => _displayDate = date;
 
   @override
   void didSelectionChanged(_) {
     super.didSelectionChanged(_);
-    if (widget.selection.autoClosePopupAfterSelectionChanged) close();
+    if (widget.selection.autoClosePopupAfterSelectionChanged) {
+      close();
+      if (_ is DateTime) _displayDate = _;
+    }
   }
 
   @override

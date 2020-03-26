@@ -1,4 +1,4 @@
-## [1.0.4] - 3/23/2020.
+## [1.0.5] - 3/26/2020.
 
 * Pass CalendarComboController to calendarDecoratorBuilder
 * Use combos 1.2.0

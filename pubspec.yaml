@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  combos: ^1.1.7+2
+  combos: ^1.1.7+6
 
 dev_dependencies:
   pedantic: ^1.8.0

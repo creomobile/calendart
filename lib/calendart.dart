@@ -1415,7 +1415,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
 
     return ComboContext(
       parameters: ComboParameters(
-        childDecoratorBuilder: (context, comboParameters, opened, child) {
+        childDecoratorBuilder: (context, comboParameters, controller, child) {
           final theme = Theme.of(context);
           final title = widget.title;
           final titlePlacement = parameters.comboTextTitlePlacement;
@@ -1443,7 +1443,7 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
                 child: IgnorePointer(
                   child: InputDecorator(
                       decoration: decoration,
-                      isFocused: opened,
+                      isFocused: controller.opened,
                       isEmpty: !widget.selection.hasSelection,
                       expands: true),
                 ),

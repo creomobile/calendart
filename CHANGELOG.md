@@ -1,5 +1,10 @@
 ## [1.0.4] - 3/23/2020.
 
+* Pass CalendarComboController to calendarDecoratorBuilder
+* Use combos 1.2.0
+
+## [1.0.4] - 3/23/2020.
+
 * Implement month/calendar decorators, fix in popup calendar selection
 
 ## [1.0.3] - 3/22/2020.

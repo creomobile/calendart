@@ -4,9 +4,13 @@
 
 High customizable Flutter calendar widgets with popup view and multi-columns/rows of months, multi-scroll directions, multi-selections.
 
-[Samples is available here](https://samples.creomobile.com/#/calendart)
+[Install instructions](https://pub.dev/packages/calendart#-installing-tab-)
 
-![alt text](https://samples.creomobile.com/calendart.png)
+[Docs](https://pub.dev/documentation/calendart/latest/calendart/calendart-library.html)
+
+[Online Samples](https://samples.creomobile.com/#/calendart)
+
+![alt text](https://samples.creomobile.com/calendart2.png)
 
 ### Example:
 

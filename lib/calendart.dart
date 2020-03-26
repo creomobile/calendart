@@ -1407,7 +1407,16 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
   @override
   Widget build(BuildContext context) {
     final data = CalendarContext.of(context);
-    final parameters = data?.parameters ?? CalendarParameters.defaultParameters;
+    CalendarParameters getParameters() =>
+        data?.parameters ?? CalendarParameters.defaultParameters;
+    final parameters = getParameters().copyWith(calendarDecoratorBuilder:
+        (context, parameters, displayDate, calendar, controller) {
+      final parentParameters = getParameters();
+      return parentParameters.calendarDecoratorBuilder == null
+          ? calendar
+          : parentParameters.calendarDecoratorBuilder(
+              context, parameters, displayDate, calendar, this);
+    });
     final comboParameters = ComboContext.of(context)?.parameters ??
         ComboParameters.defaultParameters;
     final popupDecorator = comboParameters.popupDecoratorBuilder;

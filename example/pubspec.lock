@@ -7,7 +7,14 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "1.0.4+3"
+    version: "1.0.5"
+  charcode:
+    dependency: transitive
+    description:
+      name: charcode
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.1.3"
   collection:
     dependency: transitive
     description:
@@ -21,16 +28,16 @@ packages:
       name: combos
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.1.7+6"
+    version: "1.2.0"
   combos_example:
     dependency: "direct main"
     description:
       path: "example/"
       ref: HEAD
-      resolved-ref: b8e5b727d9f85bad3fe0b482ef37646cc3cec87e
+      resolved-ref: "41227bcceb3ac62b23dea99bb067e5fa2805b78b"
       url: "https://github.com/creomobile/combos"
     source: git
-    version: "1.0.0+1"
+    version: "1.0.0"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -43,7 +50,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "81a8230155f2a280d930ac35b1bfabfc112678cc"
+      resolved-ref: "3ed573da36b238b843fc5e1ef79cd638ce2b1948"
       url: "https://github.com/creomobile/demo_items"
     source: git
     version: "0.0.1"
@@ -53,7 +60,14 @@ packages:
       name: editors
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.5"
+    version: "0.0.9"
+  english_words:
+    dependency: transitive
+    description:
+      name: english_words
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "3.1.5"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -92,6 +106,27 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.99"
+  source_span:
+    dependency: transitive
+    description:
+      name: source_span
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.7.0"
+  string_scanner:
+    dependency: transitive
+    description:
+      name: string_scanner
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.5"
+  term_glyph:
+    dependency: transitive
+    description:
+      name: term_glyph
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.1.0"
   typed_data:
     dependency: transitive
     description:

@@ -73,6 +73,17 @@ typedef SelectionTitleBuilder<TSelection> = Widget Function(
 /// [placeholder] as [InputDecoration.hintText]
 enum ComboTextTitlePlacement { label, placeholder }
 
+/// Signature for combo calendar title decorator builder
+typedef CalendarTitleDecoratorBuilder = Widget Function(
+  BuildContext context,
+  CalendarParameters calendarParameters,
+  ComboParameters comboParameters,
+  ComboController controller,
+  String title,
+  bool hasSelection,
+  Widget child,
+);
+
 /// Common parameters for calendar widgets.
 class CalendarParameters {
   /// Creates common parameters for calendar widgets.
@@ -93,6 +104,7 @@ class CalendarParameters {
     this.multiSelectionTitleBuilder,
     this.rangeSelectionTitleBuilder,
     this.selectionTitleBuilder,
+    this.titleDecoratorBuilder,
   });
 
   // Common parameters with dafault values for calendar widgets
@@ -112,6 +124,7 @@ class CalendarParameters {
     multiSelectionTitleBuilder: buildDefaultMultiSelectionTitle,
     rangeSelectionTitleBuilder: buildDefaultRangeSelectionTitle,
     selectionTitleBuilder: buildDefaultSelectionTitle,
+    titleDecoratorBuilder: buildDefaultTitleDecorator,
   );
 
   /// Determines first day of week in calendar.
@@ -173,6 +186,9 @@ class CalendarParameters {
   /// [rangeSelectionTitleBuilder])
   final SelectionTitleBuilder selectionTitleBuilder;
 
+  /// Define combo title decorator builder for calendar combos
+  final CalendarTitleDecoratorBuilder titleDecoratorBuilder;
+
   /// Creates a copy of this calendar parameters but with the given fields replaced with
   /// the new values.
   CalendarParameters copyWith({
@@ -192,6 +208,7 @@ class CalendarParameters {
     SelectionTitleBuilder<Set<DateTime>> multiSelectionTitleBuilder,
     SelectionTitleBuilder<DatesRange> rangeSelectionTitleBuilder,
     SelectionTitleBuilder selectionTitleBuilder,
+    CalendarTitleDecoratorBuilder titleDecoratorBuilder,
   }) =>
       CalendarParameters(
         firstDayOfWeekIndex: firstDayOfWeekIndex ?? this.firstDayOfWeekIndex,
@@ -219,6 +236,8 @@ class CalendarParameters {
             rangeSelectionTitleBuilder ?? this.rangeSelectionTitleBuilder,
         selectionTitleBuilder:
             selectionTitleBuilder ?? this.selectionTitleBuilder,
+        titleDecoratorBuilder:
+            titleDecoratorBuilder ?? this.titleDecoratorBuilder,
       );
 
   /// Default builder for [dayOfWeekBuilder]
@@ -360,6 +379,50 @@ class CalendarParameters {
           title: selected == null
               ? const SizedBox()
               : getSelectionTitle(context, parameters, selected));
+
+  /// Default builder for [titleDecoratorBuilder]
+  static Widget buildDefaultTitleDecorator(
+    BuildContext context,
+    CalendarParameters calendarParameters,
+    ComboParameters comboParameters,
+    ComboController controller,
+    String title,
+    bool hasSelection,
+    Widget child,
+  ) {
+    final theme = Theme.of(context);
+    final titlePlacement = calendarParameters.comboTextTitlePlacement;
+    final decoration = InputDecoration(
+            labelText: titlePlacement == null ||
+                    titlePlacement == ComboTextTitlePlacement.label
+                ? title
+                : null,
+            hintText: titlePlacement == ComboTextTitlePlacement.placeholder
+                ? title
+                : null,
+            border: OutlineInputBorder())
+        .applyDefaults(theme.inputDecorationTheme)
+        .copyWith(
+          enabled: comboParameters.enabled,
+        );
+    return Stack(
+      children: [
+        Material(
+            borderRadius:
+                (decoration.enabledBorder as OutlineInputBorder)?.borderRadius,
+            child: child),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: InputDecorator(
+                decoration: decoration,
+                isFocused: controller.opened,
+                isEmpty: !hasSelection,
+                expands: true),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Allows to set [CalendarParameters] for all [Calendar], [CalendarCombo]
@@ -412,6 +475,8 @@ class CalendarContext extends StatelessWidget {
           my.rangeSelectionTitleBuilder ?? def.rangeSelectionTitleBuilder,
       selectionTitleBuilder:
           my.selectionTitleBuilder ?? def.selectionTitleBuilder,
+      titleDecoratorBuilder:
+          my.titleDecoratorBuilder ?? def.titleDecoratorBuilder,
     );
 
     return CalendarContextData(this, child, merged);
@@ -1424,43 +1489,16 @@ class CalendarComboState<TSelection> extends State<CalendarCombo>
 
     return ComboContext(
       parameters: ComboParameters(
-        childDecoratorBuilder: (context, comboParameters, controller, child) {
-          final theme = Theme.of(context);
-          final title = widget.title;
-          final titlePlacement = parameters.comboTextTitlePlacement;
-          final decoration = InputDecoration(
-                  labelText: titlePlacement == null ||
-                          titlePlacement == ComboTextTitlePlacement.label
-                      ? title
-                      : null,
-                  hintText:
-                      titlePlacement == ComboTextTitlePlacement.placeholder
-                          ? title
-                          : null,
-                  border: OutlineInputBorder())
-              .applyDefaults(theme.inputDecorationTheme)
-              .copyWith(
-                enabled: comboParameters.enabled,
-              );
-          return Stack(
-            children: [
-              Material(
-                  borderRadius: (decoration.enabledBorder as OutlineInputBorder)
-                      ?.borderRadius,
-                  child: child),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: InputDecorator(
-                      decoration: decoration,
-                      isFocused: controller.opened,
-                      isEmpty: !widget.selection.hasSelection,
-                      expands: true),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+          childDecoratorBuilder:
+              (context, comboParameters, controller, child) =>
+                  parameters.titleDecoratorBuilder(
+                      context,
+                      parameters,
+                      comboParameters,
+                      controller,
+                      widget.title,
+                      widget.selection.hasSelection,
+                      child)),
       child: Combo(
         key: _comboKey,
         child: parameters.selectionTitleBuilder(

@@ -1,3 +1,7 @@
+## [1.0.6] - 4/11/2020.
+
+* Implement 'titleDecoratorBuilder' in parameters
+
 ## [1.0.5] - 3/26/2020.
 
 * Pass CalendarComboController to calendarDecoratorBuilder

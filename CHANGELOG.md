@@ -1,3 +1,7 @@
+## [1.0.6+1] - 4/12/2020.
+
+* Rename ComboTextTitlePlacement with CalendarComboTextTitlePlacement
+
 ## [1.0.6] - 4/11/2020.
 
 * Implement 'titleDecoratorBuilder' in parameters

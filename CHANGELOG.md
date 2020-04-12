@@ -1,4 +1,4 @@
-## [1.0.6+1] - 4/12/2020.
+## [1.0.7] - 4/12/2020.
 
 * Rename ComboTextTitlePlacement with CalendarComboTextTitlePlacement
 

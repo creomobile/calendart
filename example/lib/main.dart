@@ -341,10 +341,10 @@ class CalendarComboProperties extends CalendarProperties {
   @override
   bool get showAutoClosePopup => true;
 
-  final textTitlePlacement = EnumEditor<ComboTextTitlePlacement>(
+  final textTitlePlacement = EnumEditor<CalendarComboTextTitlePlacement>(
       title: 'Text Title Placement',
-      value: ComboTextTitlePlacement.label,
-      getList: () => ComboTextTitlePlacement.values);
+      value: CalendarComboTextTitlePlacement.label,
+      getList: () => CalendarComboTextTitlePlacement.values);
 
   final comboProperties = combos.ComboProperties(withChildDecorator: false);
 

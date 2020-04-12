@@ -71,7 +71,7 @@ typedef SelectionTitleBuilder<TSelection> = Widget Function(
 /// Define combo calendar text title placement
 /// [label] as [InputDecoration.labelText]
 /// [placeholder] as [InputDecoration.hintText]
-enum ComboTextTitlePlacement { label, placeholder }
+enum CalendarComboTextTitlePlacement { label, placeholder }
 
 /// Signature for combo calendar title decorator builder
 typedef CalendarTitleDecoratorBuilder = Widget Function(
@@ -119,7 +119,7 @@ class CalendarParameters {
     verticalSeparator: PreferredSize(
         preferredSize: Size.fromHeight(32), child: SizedBox(height: 32)),
     scrollDirection: Axis.horizontal,
-    comboTextTitlePlacement: ComboTextTitlePlacement.label,
+    comboTextTitlePlacement: CalendarComboTextTitlePlacement.label,
     singleSelectionTitleBuilder: buildDefaultSingleSelectionTitle,
     multiSelectionTitleBuilder: buildDefaultMultiSelectionTitle,
     rangeSelectionTitleBuilder: buildDefaultRangeSelectionTitle,
@@ -169,7 +169,7 @@ class CalendarParameters {
   /// Define combo calendar text title placement
   /// [label] as [InputDecoration.labelText]
   /// [placeholder] as [InputDecoration.hintText]
-  final ComboTextTitlePlacement comboTextTitlePlacement;
+  final CalendarComboTextTitlePlacement comboTextTitlePlacement;
 
   /// Define combo title builder for single selections -
   /// [CalendarSingleSelection], [CalendarSingleOrNoneSelection].
@@ -203,7 +203,7 @@ class CalendarParameters {
     PreferredSizeWidget horizontalSeparator,
     PreferredSizeWidget verticalSeparator,
     Axis scrollDirection,
-    ComboTextTitlePlacement comboTextTitlePlacement,
+    CalendarComboTextTitlePlacement comboTextTitlePlacement,
     SelectionTitleBuilder<DateTime> singleSelectionTitleBuilder,
     SelectionTitleBuilder<Set<DateTime>> multiSelectionTitleBuilder,
     SelectionTitleBuilder<DatesRange> rangeSelectionTitleBuilder,
@@ -394,12 +394,13 @@ class CalendarParameters {
     final titlePlacement = calendarParameters.comboTextTitlePlacement;
     final decoration = InputDecoration(
             labelText: titlePlacement == null ||
-                    titlePlacement == ComboTextTitlePlacement.label
+                    titlePlacement == CalendarComboTextTitlePlacement.label
                 ? title
                 : null,
-            hintText: titlePlacement == ComboTextTitlePlacement.placeholder
-                ? title
-                : null,
+            hintText:
+                titlePlacement == CalendarComboTextTitlePlacement.placeholder
+                    ? title
+                    : null,
             border: OutlineInputBorder())
         .applyDefaults(theme.inputDecorationTheme)
         .copyWith(
